@@ -121,6 +121,10 @@ class RouteService {
         var bestDistance: Int? = null
         val bestMatches = ArrayList<Place>()
 
+        // TODO levenshtein distance needs to be normalized if it will be used for comparing matches with different
+        //  length (e.g. match for "to" vs match for "to loose") because otherwise the result for the shorter word will
+        //  always (well most of the times) be better than the result for the longer one (see https://en.wikipedia.org/wiki/Levenshtein_distance)
+        //  normalizing can easily be done by dividing hte result by max(word.length, match.name.length)
         matches.forEach { match ->
             val distance = levenshteinDistance.apply(word, match.name)
             bestDistance.let { best ->
