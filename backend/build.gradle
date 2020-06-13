@@ -1,0 +1,54 @@
+import com.github.jengelman.gradle.plugins.shadow.transformers.Log4j2PluginsCacheFileTransformer
+
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.3.72'
+    id 'com.github.johnrengelman.shadow' version '5.2.0'
+}
+
+group 'dev.ksick'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+    jcenter()
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+
+    // AWS Lambda
+    implementation "com.amazonaws:aws-lambda-java-core:1.2.1"
+    implementation "com.amazonaws:aws-lambda-java-events:2.1.0"
+
+    // Database
+    implementation "org.postgresql:postgresql:42.2.2"
+    implementation "org.jetbrains.exposed:exposed-core:0.25.1"
+    implementation "org.jetbrains.exposed:exposed-dao:0.25.1"
+    implementation "org.jetbrains.exposed:exposed-jdbc:0.25.1"
+
+    // Text & Codec
+    implementation "commons-codec:commons-codec:1.14"
+    implementation "org.apache.commons:commons-text:1.8"
+
+    // Logging
+    implementation "com.amazonaws:aws-lambda-java-log4j2:1.1.0"
+    implementation "org.apache.logging.log4j:log4j-core:2.13.3"
+    implementation "org.apache.logging.log4j:log4j-api:2.13.3"
+}
+
+jar {
+    enabled = false
+}
+
+shadowJar {
+    transform(Log4j2PluginsCacheFileTransformer)
+}
+
+build.dependsOn(shadowJar)
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
