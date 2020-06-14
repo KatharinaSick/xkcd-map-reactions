@@ -47,8 +47,12 @@ public class V2__Insert_Places extends BaseJavaMigration {
 
                 preparedStatement.addBatch();
 
-                System.out.println("Line " + currentLine);
-                currentLine.getAndIncrement();
+                int lineCount = currentLine.getAndIncrement();
+                if (lineCount % 1000 == 0) {
+                    System.out.println("Line " + lineCount);
+                    preparedStatement.executeBatch();
+                    context.getConnection().commit();
+                }
             } catch (SQLException e) {
                 System.out.println("Failed to insert $line to database because of $e");
             }

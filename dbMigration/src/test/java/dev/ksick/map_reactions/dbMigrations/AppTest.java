@@ -1,4 +1,4 @@
-package dev.ksick.map-reactions.dbMigrations;
+package dev.ksick.map_reactions.dbMigrations;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
