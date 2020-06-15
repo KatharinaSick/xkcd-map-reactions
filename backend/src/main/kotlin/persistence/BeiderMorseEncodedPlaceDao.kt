@@ -10,9 +10,9 @@ object BeiderMorseEncodedPlaces : LongIdTable("beider_morse_encoded_places") {
     val place = reference("place_id", Places)
 }
 
-class BeiderMorseEncodedPlace(id: EntityID<Long>) : LongEntity(id) {
-    companion object : LongEntityClass<BeiderMorseEncodedPlace>(BeiderMorseEncodedPlaces)
+class BeiderMorseEncodedPlaceDao(id: EntityID<Long>) : LongEntity(id) {
+    companion object : LongEntityClass<BeiderMorseEncodedPlaceDao>(BeiderMorseEncodedPlaces)
 
     var code by BeiderMorseEncodedPlaces.code
-    var place by Place referencedOn BeiderMorseEncodedPlaces.place
+    var place by PlaceDao referencedOn BeiderMorseEncodedPlaces.place
 }

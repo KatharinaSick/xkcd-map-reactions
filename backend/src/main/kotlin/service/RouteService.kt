@@ -2,6 +2,7 @@ package service
 
 import exception.BadRequestException
 import exception.HttpException
+import model.Place
 import org.apache.commons.codec.language.Nysiis
 import org.apache.commons.codec.language.Soundex
 import org.apache.commons.codec.language.bm.BeiderMorseEncoder
@@ -9,14 +10,15 @@ import org.apache.commons.text.similarity.LevenshteinDistance
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.lowerCase
 import org.jetbrains.exposed.sql.transactions.transaction
-import persistence.BeiderMorseEncodedPlace
+import persistence.BeiderMorseEncodedPlaceDao
 import persistence.BeiderMorseEncodedPlaces
-import persistence.NysiisEncodedPlace
+import persistence.NysiisEncodedPlaceDao
 import persistence.NysiisEncodedPlaces
-import persistence.Place
+import persistence.PlaceDao
 import persistence.Places
-import persistence.SoundexEncodedPlace
+import persistence.SoundexEncodedPlaceDao
 import persistence.SoundexEncodedPlaces
+import java.lang.UnsupportedOperationException
 
 class RouteService {
 
@@ -52,7 +54,11 @@ class RouteService {
         val route = ArrayList<Place>()
         transaction {
             wordsToMap.forEach { word ->
-                val exactMatches = Place.find { Places.name.lowerCase() eq word.toLowerCase() }.toList()
+                val exactMatches = PlaceDao
+                    .find { Places.name.lowerCase() eq word.toLowerCase() }
+                    .map { it.toModel() }
+                    .toList()
+
                 if (exactMatches.isNotEmpty()) {
                     // there is a place that's named exactly like the word -> use it!
                     // TODO take the match that fits best into the route!
@@ -78,26 +84,26 @@ class RouteService {
      */
     private fun getPhoneticMatchesForWord(word: String): List<Place> {
         // Nysiis
-        val nysiisMatches = NysiisEncodedPlace
+        val nysiisMatches = NysiisEncodedPlaceDao
             .find { NysiisEncodedPlaces.code eq nysiisEncoder.encode(word) }
-            .map { it.place }
+            .map { it.place.toModel() }
 
         // Beider Morse
         val beiderMorseCodes = beiderMorseEncoder.encode(word).split("|")
         val beiderMorseMatches = ArrayList<Place>()
         beiderMorseCodes.forEach { code ->
             beiderMorseMatches.addAll(
-                BeiderMorseEncodedPlace
+                BeiderMorseEncodedPlaceDao
                     .find { BeiderMorseEncodedPlaces.code eq code }
-                    .map { it.place }
+                    .map { it.place.toModel() }
             )
         }
 
         // use soundex as backup if both result sets are empty (should barely never happen but to make sure...)
         if (beiderMorseMatches.isEmpty() && nysiisMatches.isEmpty()) {
-            return SoundexEncodedPlace
+            return SoundexEncodedPlaceDao
                 .find { SoundexEncodedPlaces.code eq soundexEnocder.encode(word) }
-                .map { it.place }
+                .map { it.place.toModel() }
         }
 
         // Combine result sets
