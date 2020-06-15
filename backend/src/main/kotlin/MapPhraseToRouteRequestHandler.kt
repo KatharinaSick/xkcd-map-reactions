@@ -4,15 +4,20 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
 import com.google.gson.GsonBuilder
 import exception.HttpException
+import service.PhraseService
 import service.RouteService
 import java.net.HttpURLConnection
 
 class MapPhraseToRouteRequestHandler : RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
+    private val phraseService = PhraseService()
+    private val routeService = RouteService()
+
     override fun handleRequest(
         inputEvent: APIGatewayProxyRequestEvent,
         context: Context
     ): APIGatewayProxyResponseEvent {
+        val phrase = inputEvent.queryStringParameters?.getOrDefault("phrase", null)
 
         val gson = GsonBuilder()
             .excludeFieldsWithoutExposeAnnotation()
@@ -20,7 +25,8 @@ class MapPhraseToRouteRequestHandler : RequestHandler<APIGatewayProxyRequestEven
             .create()
 
         return try {
-            val route = RouteService().mapPhraseToRoute(inputEvent.queryStringParameters?.getOrDefault("phrase", null))
+            val wordsToMap = phraseService.splitPhraseToWords(phrase)
+            val route = routeService.mapPhraseToRoute(wordsToMap)
             if (route.isNotEmpty()) {
                 getResponse(HttpURLConnection.HTTP_OK, gson.toJson(route))
             } else {

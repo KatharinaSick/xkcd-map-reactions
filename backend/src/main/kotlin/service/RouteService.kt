@@ -35,13 +35,8 @@ class RouteService {
      * @return a list of places representing the mapped route.
      */
     @Throws(HttpException::class)
-    fun mapPhraseToRoute(phraseToMap: String?): List<Place> {
-        val wordsToMap = phraseToMap
-            ?.split(" ")
-            ?.filter { it.isNotBlank() }
-            ?.toList()
-
-        if (wordsToMap == null || wordsToMap.isEmpty()) {
+    fun mapPhraseToRoute(wordsToMap: List<String>): List<Place> {
+        if (wordsToMap.isEmpty()) {
             throw BadRequestException("Phrase must not be empty")
         }
 
@@ -68,7 +63,7 @@ class RouteService {
                 }
 
                 val matches = getPhoneticMatchesForWord(word)
-                if (matches.isEmpty()) {
+                if (matches == null || matches.isEmpty()) {
                     throw NotFoundException("No phonetic match found for \"$word\"")
                 }
                 // TODO take the match that fits best into the route!
@@ -86,7 +81,7 @@ class RouteService {
      * @param word the word to find similar sounding places for.
      * @return a list of places that match to the passed word.
      */
-    private fun getPhoneticMatchesForWord(word: String): List<Place> {
+    private fun getPhoneticMatchesForWord(word: String): List<Place>? {
         // Nysiis
         val nysiisMatches = NysiisEncodedPlaceDao
             .find { NysiisEncodedPlaces.code eq nysiisEncoder.encode(word) }
@@ -105,9 +100,13 @@ class RouteService {
 
         // Soundex as fallback if both result sets are empty (should barely never happen but to make sure...)
         if (beiderMorseMatches.isEmpty() && nysiisMatches.isEmpty()) {
-            return SoundexEncodedPlaceDao
-                .find { SoundexEncodedPlaces.code eq soundexEnocder.encode(word) }
-                .map { it.place.toModel() }
+            return try {
+                SoundexEncodedPlaceDao
+                    .find { SoundexEncodedPlaces.code eq soundexEnocder.encode(word) }
+                    .map { it.place.toModel() }
+            } catch (e: IllegalArgumentException) {
+                null
+            }
         }
 
         // Combine result sets
