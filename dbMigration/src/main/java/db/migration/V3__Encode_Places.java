@@ -22,9 +22,6 @@ public class V3__Encode_Places extends BaseJavaMigration {
 
         Connection connection = context.getConnection();
 
-        // Create the statement to execute SQL code
-        Statement statement = connection.createStatement();
-
         // Prepare SQL connections and statements for both tables
         String beiderMorseInsertStatement = "INSERT INTO beider_morse_encoded_places (code, place_id) VALUES  (?,?)";
         PreparedStatement beiderMorsePreparedStatement = context.getConnection().prepareStatement(beiderMorseInsertStatement);
