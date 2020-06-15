@@ -17,13 +17,7 @@ class PhraseService {
             throw BadRequestException("Phrase must not be empty")
         }
 
-        phrase.trim()
-
-        val isValid = phrase
-            .chars()
-            .asSequence()
-            .all { Character.isLetter(it) || Character.isSpaceChar(it) }
-        if (!isValid) {
+        if (!phrase.chars().asSequence().all { Character.isLetter(it) || Character.isSpaceChar(it) }) {
             throw BadRequestException("Phrase must contain only alphabetical letters and spaces")
         }
 

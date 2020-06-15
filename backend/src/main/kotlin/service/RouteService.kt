@@ -8,20 +8,11 @@ import org.apache.commons.codec.language.Nysiis
 import org.apache.commons.codec.language.Soundex
 import org.apache.commons.codec.language.bm.BeiderMorseEncoder
 import org.apache.commons.text.similarity.LevenshteinDistance
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.lowerCase
-import org.jetbrains.exposed.sql.transactions.transaction
-import persistence.BeiderMorseEncodedPlaceDao
-import persistence.BeiderMorseEncodedPlaces
-import persistence.NysiisEncodedPlaceDao
-import persistence.NysiisEncodedPlaces
-import persistence.PlaceDao
-import persistence.Places
-import persistence.SoundexEncodedPlaceDao
-import persistence.SoundexEncodedPlaces
-import kotlin.math.max
+import persistence.PlaceRepository
 
 class RouteService {
+
+    private var placeRepository = PlaceRepository()
 
     private val beiderMorseEncoder = BeiderMorseEncoder()
     private val nysiisEncoder = Nysiis()
@@ -31,7 +22,7 @@ class RouteService {
     /**
      * Maps the passed phrase to a route (a list of places) that sounds similar.
      *
-     * @param phraseToMap the phrase to map to a route.
+     * @param wordsToMap the phrase to map to a route.
      * @return a list of places representing the mapped route.
      */
     @Throws(HttpException::class)
@@ -40,35 +31,23 @@ class RouteService {
             throw BadRequestException("Phrase must not be empty")
         }
 
-        Database.connect(
-            "jdbc:postgresql://${System.getenv("DB_URL")}/${System.getenv("DB_NAME")}",
-            driver = "org.postgresql.Driver",
-            user = System.getenv("DB_USER"),
-            password = System.getenv("DB_PASSWORD")
-        )
-
         val route = ArrayList<Place>()
-        transaction {
-            wordsToMap.forEach { word ->
-                val exactMatches = PlaceDao
-                    .find { Places.name.lowerCase() eq word.toLowerCase() }
-                    .map { it.toModel() }
-                    .toList()
+        wordsToMap.forEach { word ->
+            val exactMatches = placeRepository.findAllWhereNameMatchesIgnoreCase(word)
 
-                if (exactMatches.isNotEmpty()) {
-                    // there is a place that's named exactly like the word -> use it!
-                    // TODO take the match that fits best into the route!
-                    route.add(exactMatches[0])
-                    return@forEach
-                }
-
-                val matches = getPhoneticMatchesForWord(word)
-                if (matches == null || matches.isEmpty()) {
-                    throw NotFoundException("No phonetic match found for \"$word\"")
-                }
+            if (exactMatches.isNotEmpty()) {
+                // there is a place that's named exactly like the word -> use it!
                 // TODO take the match that fits best into the route!
-                route.add(findBestMatch(word, matches)[0])
+                route.add(exactMatches[0])
+                return@forEach
             }
+
+            val matches = getPhoneticMatchesForWord(word)
+            if (matches.isEmpty()) {
+                throw NotFoundException("No phonetic match found for \"$word\"")
+            }
+            // TODO take the match that fits best into the route!
+            route.add(findBestMatch(word, matches)[0])
         }
         return route
     }
@@ -81,32 +60,18 @@ class RouteService {
      * @param word the word to find similar sounding places for.
      * @return a list of places that match to the passed word.
      */
-    private fun getPhoneticMatchesForWord(word: String): List<Place>? {
+    private fun getPhoneticMatchesForWord(word: String): List<Place> {
         // Nysiis
-        val nysiisMatches = NysiisEncodedPlaceDao
-            .find { NysiisEncodedPlaces.code eq nysiisEncoder.encode(word) }
-            .map { it.place.toModel() }
+        val nysiisMatches = placeRepository.findAllWhereNysiisCodeMatches(nysiisEncoder.encode(word))
 
         // Beider Morse
         val beiderMorseCodes = beiderMorseEncoder.encode(word).split("\\|")
         val beiderMorseMatches = ArrayList<Place>()
-        beiderMorseCodes.forEach { code ->
-            beiderMorseMatches.addAll(
-                BeiderMorseEncodedPlaceDao
-                    .find { BeiderMorseEncodedPlaces.code eq code }
-                    .map { it.place.toModel() }
-            )
-        }
+        beiderMorseCodes.forEach { beiderMorseMatches.addAll(placeRepository.findAllWhereBeiderMorseCodeMatches(it)) }
 
         // Soundex as fallback if both result sets are empty (should barely never happen but to make sure...)
         if (beiderMorseMatches.isEmpty() && nysiisMatches.isEmpty()) {
-            return try {
-                SoundexEncodedPlaceDao
-                    .find { SoundexEncodedPlaces.code eq soundexEnocder.encode(word) }
-                    .map { it.place.toModel() }
-            } catch (e: IllegalArgumentException) {
-                null
-            }
+            return placeRepository.findAllWhereSoundexCodeMatches(soundexEnocder.encode(word))
         }
 
         // Combine result sets
@@ -127,12 +92,13 @@ class RouteService {
      * @return a list of places containing the best matches for the passed word.
      */
     private fun findBestMatch(word: String, matches: List<Place>): List<Place> {
-        var bestDistance: Int? = null
+        var bestDistance: Double? = null
         val bestMatches = ArrayList<Place>()
 
         matches.forEach { match ->
             // Normalized Levenshtein distance can also be used to compare words of different length
-            val distance = levenshteinDistance.apply(word, match.name) / max(word.length, match.name.length)
+            // TODO didn't think this through yet - maybe also another measure than the levenshtein distance could be good!
+            val distance = levenshteinDistance.apply(word, match.name).toDouble() / word.length.toDouble()
             bestDistance.let { best ->
                 if (best == null || distance < best) {
                     bestMatches.clear()

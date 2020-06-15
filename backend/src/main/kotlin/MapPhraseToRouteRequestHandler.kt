@@ -6,6 +6,7 @@ import com.google.gson.GsonBuilder
 import exception.HttpException
 import service.PhraseService
 import service.RouteService
+import java.lang.Exception
 import java.net.HttpURLConnection
 
 class MapPhraseToRouteRequestHandler : RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
@@ -34,7 +35,7 @@ class MapPhraseToRouteRequestHandler : RequestHandler<APIGatewayProxyRequestEven
             }
         } catch (e: HttpException) {
             getResponse(e.statusCode, gson.toJson(e))
-        } finally {
+        } catch (e: Exception) {
             getResponse(HttpURLConnection.HTTP_INTERNAL_ERROR, getJsonForMessage("Internal server error"))
         }
     }

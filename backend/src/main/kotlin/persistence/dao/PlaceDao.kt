@@ -1,4 +1,4 @@
-package persistence
+package persistence.dao
 
 import model.Place
 import org.jetbrains.exposed.dao.LongEntity

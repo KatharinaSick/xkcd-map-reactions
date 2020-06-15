@@ -37,6 +37,15 @@ dependencies {
 
     // JSON (de)serialization
     implementation 'com.google.code.gson:gson:2.8.6'
+
+    // Testing
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.3.1'
+    testImplementation "io.mockk:mockk:1.10.0"
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.3.1'
+}
+
+test {
+    useJUnitPlatform()
 }
 
 jar {
