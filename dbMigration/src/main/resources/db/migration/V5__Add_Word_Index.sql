@@ -1,0 +1,1 @@
+CREATE INDEX ON places (lower(name));
