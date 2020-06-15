@@ -1,6 +1,13 @@
 package exception
 
+import com.google.gson.annotations.Expose
+
 abstract class HttpException(
+
+    @Expose
     val statusCode: Int,
-    override val message: String?
+
+    @Expose
+    override val message: String
+
 ) : Exception(message)

@@ -1,4 +1,4 @@
-package persistence
+package persistence.dao
 
 import org.jetbrains.exposed.dao.LongEntity
 import org.jetbrains.exposed.dao.LongEntityClass
@@ -10,9 +10,9 @@ object NysiisEncodedPlaces : LongIdTable("nysiis_encoded_places") {
     val place = reference("place_id", Places)
 }
 
-class NysiisEncodedPlace(id: EntityID<Long>) : LongEntity(id) {
-    companion object : LongEntityClass<NysiisEncodedPlace>(NysiisEncodedPlaces)
+class NysiisEncodedPlaceDao(id: EntityID<Long>) : LongEntity(id) {
+    companion object : LongEntityClass<NysiisEncodedPlaceDao>(NysiisEncodedPlaces)
 
     var code by NysiisEncodedPlaces.code
-    var place by Place referencedOn NysiisEncodedPlaces.place
+    var place by PlaceDao referencedOn NysiisEncodedPlaces.place
 }

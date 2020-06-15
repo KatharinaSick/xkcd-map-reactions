@@ -1,4 +1,4 @@
-package persistence
+package persistence.dao
 
 import org.jetbrains.exposed.dao.LongEntity
 import org.jetbrains.exposed.dao.LongEntityClass
@@ -10,9 +10,9 @@ object SoundexEncodedPlaces : LongIdTable("soundex_encoded_places") {
     val place = reference("place_id", Places)
 }
 
-class SoundexEncodedPlace(id: EntityID<Long>) : LongEntity(id) {
-    companion object : LongEntityClass<SoundexEncodedPlace>(SoundexEncodedPlaces)
+class SoundexEncodedPlaceDao(id: EntityID<Long>) : LongEntity(id) {
+    companion object : LongEntityClass<SoundexEncodedPlaceDao>(SoundexEncodedPlaces)
 
     var code by SoundexEncodedPlaces.code
-    var place by Place referencedOn SoundexEncodedPlaces.place
+    var place by PlaceDao referencedOn SoundexEncodedPlaces.place
 }

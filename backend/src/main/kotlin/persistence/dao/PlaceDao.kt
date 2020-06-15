@@ -1,5 +1,6 @@
-package persistence
+package persistence.dao
 
+import model.Place
 import org.jetbrains.exposed.dao.LongEntity
 import org.jetbrains.exposed.dao.LongEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -11,10 +12,14 @@ object Places : LongIdTable("places") {
     val longitude = double("longitude")
 }
 
-class Place(id: EntityID<Long>) : LongEntity(id) {
-    companion object : LongEntityClass<Place>(Places)
+class PlaceDao(id: EntityID<Long>) : LongEntity(id) {
+    companion object : LongEntityClass<PlaceDao>(Places)
 
     var name by Places.name
     var latitude by Places.latitude
     var longitude by Places.longitude
+
+    fun toModel() : Place {
+        return Place(name, latitude, longitude)
+    }
 }

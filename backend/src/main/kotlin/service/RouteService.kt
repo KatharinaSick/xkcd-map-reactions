@@ -2,23 +2,17 @@ package service
 
 import exception.BadRequestException
 import exception.HttpException
+import exception.NotFoundException
+import model.Place
 import org.apache.commons.codec.language.Nysiis
 import org.apache.commons.codec.language.Soundex
 import org.apache.commons.codec.language.bm.BeiderMorseEncoder
 import org.apache.commons.text.similarity.LevenshteinDistance
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.lowerCase
-import org.jetbrains.exposed.sql.transactions.transaction
-import persistence.BeiderMorseEncodedPlace
-import persistence.BeiderMorseEncodedPlaces
-import persistence.NysiisEncodedPlace
-import persistence.NysiisEncodedPlaces
-import persistence.Place
-import persistence.Places
-import persistence.SoundexEncodedPlace
-import persistence.SoundexEncodedPlaces
+import persistence.PlaceRepository
 
 class RouteService {
+
+    private var placeRepository = PlaceRepository()
 
     private val beiderMorseEncoder = BeiderMorseEncoder()
     private val nysiisEncoder = Nysiis()
@@ -26,86 +20,66 @@ class RouteService {
     private val levenshteinDistance = LevenshteinDistance()
 
     /**
-     * Maps the passed phrase to a route (a list of places) that sound similar.
+     * Maps the passed phrase to a route (a list of places) that sounds similar.
      *
-     * @param phraseToMap the phrase to map to a route.
+     * @param wordsToMap the phrase to map to a route.
      * @return a list of places representing the mapped route.
      */
     @Throws(HttpException::class)
-    fun mapPhraseToRoute(phraseToMap: String?): List<Place> {
-        val wordsToMap = phraseToMap
-            ?.split(" ")
-            ?.filter { it.isNotBlank() }
-            ?.toList()
-
-        if (wordsToMap == null || wordsToMap.isEmpty()) {
+    fun mapPhraseToRoute(wordsToMap: List<String>): List<Place> {
+        if (wordsToMap.isEmpty()) {
             throw BadRequestException("Phrase must not be empty")
         }
 
-        Database.connect(
-            "jdbc:postgresql://${System.getenv("DB_URL")}/${System.getenv("DB_NAME")}",
-            driver = "org.postgresql.Driver",
-            user = System.getenv("DB_USER"),
-            password = System.getenv("DB_PASSWORD")
-        )
-
         val route = ArrayList<Place>()
-        transaction {
-            wordsToMap.forEach { word ->
-                val exactMatches = Place.find { Places.name.lowerCase() eq word.toLowerCase() }.toList()
-                if (exactMatches.isNotEmpty()) {
-                    // there is a place that's named exactly like the word -> use it!
-                    // TODO take the match that fits best into the route!
-                    route.add(exactMatches[0])
-                } else {
-                    val matches = getPhoneticMatchesForWord(word)
-                    // TODO take the match that fits best into the route!
-                    val bestMatch = findBestMatch(word, matches)[0]
-                    route.add(bestMatch)
-                }
+        wordsToMap.forEach { word ->
+            val exactMatches = placeRepository.findAllWhereNameMatchesIgnoreCase(word)
+
+            if (exactMatches.isNotEmpty()) {
+                // there is a place that's named exactly like the word -> use it!
+                // TODO take the match that fits best into the route!
+                route.add(exactMatches[0])
+                return@forEach
             }
+
+            val matches = getPhoneticMatchesForWord(word)
+            if (matches.isEmpty()) {
+                throw NotFoundException("No phonetic match found for \"$word\"")
+            }
+            // TODO take the match that fits best into the route!
+            route.add(findBestMatch(word, matches)[0])
         }
         return route
     }
 
     /**
      * Retrieves all places from the database that sound similar to the passed word. To calculate these matches it uses
-     * the Beider-Morse and the Nysiis Phonetic Matching Algorithm. If some matches are contained in both result sets,
-     * only these matches are returned. Otherwise the result sets will simply be combined and returned.
+     * the Beider-Morse and Nysiis as primary Phonetic Matchin Algorithms. If none of them delivers a result, Soundex
+     * is used as fallback.
      *
      * @param word the word to find similar sounding places for.
      * @return a list of places that match to the passed word.
      */
     private fun getPhoneticMatchesForWord(word: String): List<Place> {
         // Nysiis
-        val nysiisMatches = NysiisEncodedPlace
-            .find { NysiisEncodedPlaces.code eq nysiisEncoder.encode(word) }
-            .map { it.place }
+        val nysiisMatches = placeRepository.findAllWhereNysiisCodeMatches(nysiisEncoder.encode(word))
 
         // Beider Morse
-        val beiderMorseCodes = beiderMorseEncoder.encode(word).split("|")
+        val beiderMorseCodes = beiderMorseEncoder.encode(word).split("\\|")
         val beiderMorseMatches = ArrayList<Place>()
-        beiderMorseCodes.forEach { code ->
-            beiderMorseMatches.addAll(
-                BeiderMorseEncodedPlace
-                    .find { BeiderMorseEncodedPlaces.code eq code }
-                    .map { it.place }
-            )
-        }
+        beiderMorseCodes.forEach { beiderMorseMatches.addAll(placeRepository.findAllWhereBeiderMorseCodeMatches(it)) }
 
-        // use soundex as backup if both result sets are empty (should barely never happen but to make sure...)
+        // Soundex as fallback if both result sets are empty (should barely never happen but to make sure...)
         if (beiderMorseMatches.isEmpty() && nysiisMatches.isEmpty()) {
-            return SoundexEncodedPlace
-                .find { SoundexEncodedPlaces.code eq soundexEnocder.encode(word) }
-                .map { it.place }
+            return placeRepository.findAllWhereSoundexCodeMatches(soundexEnocder.encode(word))
         }
 
         // Combine result sets
         val matchedPlaces = nysiisMatches.intersect(beiderMorseMatches).toList()
-        return if (matchedPlaces.isEmpty()) {
-            nysiisMatches.union(beiderMorseMatches).toList()
-        } else {
+        return if (matchedPlaces.isNotEmpty()) {
             matchedPlaces
+        } else {
+            nysiisMatches.union(beiderMorseMatches).toList()
         }
     }
 
@@ -115,18 +89,16 @@ class RouteService {
      * @param word the word to find the best match for.
      * @param matches the matches where the best ones should be found.
      *
-     * @return a list of places containing the best matches.
+     * @return a list of places containing the best matches for the passed word.
      */
     private fun findBestMatch(word: String, matches: List<Place>): List<Place> {
-        var bestDistance: Int? = null
+        var bestDistance: Double? = null
         val bestMatches = ArrayList<Place>()
 
-        // TODO levenshtein distance needs to be normalized if it will be used for comparing matches with different
-        //  length (e.g. match for "to" vs match for "to loose") because otherwise the result for the shorter word will
-        //  always (well most of the times) be better than the result for the longer one (see https://en.wikipedia.org/wiki/Levenshtein_distance)
-        //  normalizing can easily be done by dividing hte result by max(word.length, match.name.length)
         matches.forEach { match ->
-            val distance = levenshteinDistance.apply(word, match.name)
+            // Normalized Levenshtein distance can also be used to compare words of different length
+            // TODO didn't think this through yet - maybe also another measure than the levenshtein distance could be good!
+            val distance = levenshteinDistance.apply(word, match.name).toDouble() / word.length.toDouble()
             bestDistance.let { best ->
                 if (best == null || distance < best) {
                     bestMatches.clear()

@@ -34,6 +34,18 @@ dependencies {
     implementation "com.amazonaws:aws-lambda-java-log4j2:1.1.0"
     implementation "org.apache.logging.log4j:log4j-core:2.13.3"
     implementation "org.apache.logging.log4j:log4j-api:2.13.3"
+
+    // JSON (de)serialization
+    implementation 'com.google.code.gson:gson:2.8.6'
+
+    // Testing
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.3.1'
+    testImplementation "io.mockk:mockk:1.10.0"
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.3.1'
+}
+
+test {
+    useJUnitPlatform()
 }
 
 jar {
