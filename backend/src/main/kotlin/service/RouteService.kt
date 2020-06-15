@@ -2,6 +2,7 @@ package service
 
 import exception.BadRequestException
 import exception.HttpException
+import exception.NotFoundException
 import model.Place
 import org.apache.commons.codec.language.Nysiis
 import org.apache.commons.codec.language.Soundex
@@ -18,7 +19,7 @@ import persistence.PlaceDao
 import persistence.Places
 import persistence.SoundexEncodedPlaceDao
 import persistence.SoundexEncodedPlaces
-import java.lang.UnsupportedOperationException
+import kotlin.math.max
 
 class RouteService {
 
@@ -28,7 +29,7 @@ class RouteService {
     private val levenshteinDistance = LevenshteinDistance()
 
     /**
-     * Maps the passed phrase to a route (a list of places) that sound similar.
+     * Maps the passed phrase to a route (a list of places) that sounds similar.
      *
      * @param phraseToMap the phrase to map to a route.
      * @return a list of places representing the mapped route.
@@ -63,12 +64,15 @@ class RouteService {
                     // there is a place that's named exactly like the word -> use it!
                     // TODO take the match that fits best into the route!
                     route.add(exactMatches[0])
-                } else {
-                    val matches = getPhoneticMatchesForWord(word)
-                    // TODO take the match that fits best into the route!
-                    val bestMatch = findBestMatch(word, matches)[0]
-                    route.add(bestMatch)
+                    return@forEach
                 }
+
+                val matches = getPhoneticMatchesForWord(word)
+                if (matches.isEmpty()) {
+                    throw NotFoundException("No phonetic match found for \"$word\"")
+                }
+                // TODO take the match that fits best into the route!
+                route.add(findBestMatch(word, matches)[0])
             }
         }
         return route
@@ -76,8 +80,8 @@ class RouteService {
 
     /**
      * Retrieves all places from the database that sound similar to the passed word. To calculate these matches it uses
-     * the Beider-Morse and the Nysiis Phonetic Matching Algorithm. If some matches are contained in both result sets,
-     * only these matches are returned. Otherwise the result sets will simply be combined and returned.
+     * the Beider-Morse and Nysiis as primary Phonetic Matchin Algorithms. If none of them delivers a result, Soundex
+     * is used as fallback.
      *
      * @param word the word to find similar sounding places for.
      * @return a list of places that match to the passed word.
@@ -89,7 +93,7 @@ class RouteService {
             .map { it.place.toModel() }
 
         // Beider Morse
-        val beiderMorseCodes = beiderMorseEncoder.encode(word).split("|")
+        val beiderMorseCodes = beiderMorseEncoder.encode(word).split("\\|")
         val beiderMorseMatches = ArrayList<Place>()
         beiderMorseCodes.forEach { code ->
             beiderMorseMatches.addAll(
@@ -99,7 +103,7 @@ class RouteService {
             )
         }
 
-        // use soundex as backup if both result sets are empty (should barely never happen but to make sure...)
+        // Soundex as fallback if both result sets are empty (should barely never happen but to make sure...)
         if (beiderMorseMatches.isEmpty() && nysiisMatches.isEmpty()) {
             return SoundexEncodedPlaceDao
                 .find { SoundexEncodedPlaces.code eq soundexEnocder.encode(word) }
@@ -108,10 +112,10 @@ class RouteService {
 
         // Combine result sets
         val matchedPlaces = nysiisMatches.intersect(beiderMorseMatches).toList()
-        return if (matchedPlaces.isEmpty()) {
-            nysiisMatches.union(beiderMorseMatches).toList()
-        } else {
+        return if (matchedPlaces.isNotEmpty()) {
             matchedPlaces
+        } else {
+            nysiisMatches.union(beiderMorseMatches).toList()
         }
     }
 
@@ -121,18 +125,15 @@ class RouteService {
      * @param word the word to find the best match for.
      * @param matches the matches where the best ones should be found.
      *
-     * @return a list of places containing the best matches.
+     * @return a list of places containing the best matches for the passed word.
      */
     private fun findBestMatch(word: String, matches: List<Place>): List<Place> {
         var bestDistance: Int? = null
         val bestMatches = ArrayList<Place>()
 
-        // TODO levenshtein distance needs to be normalized if it will be used for comparing matches with different
-        //  length (e.g. match for "to" vs match for "to loose") because otherwise the result for the shorter word will
-        //  always (well most of the times) be better than the result for the longer one (see https://en.wikipedia.org/wiki/Levenshtein_distance)
-        //  normalizing can easily be done by dividing hte result by max(word.length, match.name.length)
         matches.forEach { match ->
-            val distance = levenshteinDistance.apply(word, match.name)
+            // Normalized Levenshtein distance can also be used to compare words of different length
+            val distance = levenshteinDistance.apply(word, match.name) / max(word.length, match.name.length)
             bestDistance.let { best ->
                 if (best == null || distance < best) {
                     bestMatches.clear()

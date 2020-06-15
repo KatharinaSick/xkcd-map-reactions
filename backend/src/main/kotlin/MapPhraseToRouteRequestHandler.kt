@@ -9,8 +9,6 @@ import java.net.HttpURLConnection
 
 class MapPhraseToRouteRequestHandler : RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 
-    private val routeService = RouteService()
-
     override fun handleRequest(
         inputEvent: APIGatewayProxyRequestEvent,
         context: Context
@@ -22,17 +20,27 @@ class MapPhraseToRouteRequestHandler : RequestHandler<APIGatewayProxyRequestEven
             .create()
 
         return try {
-            val route = routeService.mapPhraseToRoute(inputEvent.queryStringParameters?.getOrDefault("phrase", null))
-
-            APIGatewayProxyResponseEvent().apply {
-                statusCode = HttpURLConnection.HTTP_OK
-                body = gson.toJson(route)
+            val route = RouteService().mapPhraseToRoute(inputEvent.queryStringParameters?.getOrDefault("phrase", null))
+            if (route.isNotEmpty()) {
+                getResponse(HttpURLConnection.HTTP_OK, gson.toJson(route))
+            } else {
+                getResponse(HttpURLConnection.HTTP_NOT_FOUND, getJsonForMessage("Route for the given phrase not found"))
             }
         } catch (e: HttpException) {
-            APIGatewayProxyResponseEvent().apply {
-                statusCode = e.statusCode
-                body = gson.toJson(e)
-            }
-        } // finally not necessary, API gateway will treat any other error as internal server error anyways
+            getResponse(e.statusCode, gson.toJson(e))
+        } finally {
+            getResponse(HttpURLConnection.HTTP_INTERNAL_ERROR, getJsonForMessage("Internal server error"))
+        }
+    }
+
+    private fun getResponse(statusCode: Int, body: String): APIGatewayProxyResponseEvent {
+        return APIGatewayProxyResponseEvent().apply {
+            this.statusCode = statusCode
+            this.body = body
+        }
+    }
+
+    private fun getJsonForMessage(message: String): String {
+        return "{\"message\": \"$message\"}"
     }
 }
