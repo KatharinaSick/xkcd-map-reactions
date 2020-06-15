@@ -4,6 +4,7 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent
 import com.google.gson.GsonBuilder
 import exception.HttpException
+import model.SimpleResponse
 import service.PhraseService
 import service.RouteService
 import java.lang.Exception
@@ -31,12 +32,12 @@ class MapPhraseToRouteRequestHandler : RequestHandler<APIGatewayProxyRequestEven
             if (route.isNotEmpty()) {
                 getResponse(HttpURLConnection.HTTP_OK, gson.toJson(route))
             } else {
-                getResponse(HttpURLConnection.HTTP_NOT_FOUND, getJsonForMessage("Route for the given phrase not found"))
+                getResponse(HttpURLConnection.HTTP_NOT_FOUND, gson.toJson(SimpleResponse("Route for the given phrase not found")))
             }
         } catch (e: HttpException) {
             getResponse(e.statusCode, gson.toJson(e))
         } catch (e: Exception) {
-            getResponse(HttpURLConnection.HTTP_INTERNAL_ERROR, getJsonForMessage("Internal server error"))
+            getResponse(HttpURLConnection.HTTP_INTERNAL_ERROR, gson.toJson(SimpleResponse("Internal server error")))
         }
     }
 
@@ -45,9 +46,5 @@ class MapPhraseToRouteRequestHandler : RequestHandler<APIGatewayProxyRequestEven
             this.statusCode = statusCode
             this.body = body
         }
-    }
-
-    private fun getJsonForMessage(message: String): String {
-        return "{\"message\": \"$message\"}"
     }
 }
