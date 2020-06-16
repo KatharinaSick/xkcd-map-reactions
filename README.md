@@ -23,5 +23,3 @@ This part of the project can be used to set up the database. It is a Java projec
 
 ## frontend
 The frontend is not implemented yet, but will follow in the next weeks.
-
-## Contributors
