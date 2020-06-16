@@ -1,6 +1,6 @@
 # xkcd-map-reactions
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-2-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 Just a small fun tool that maps sentences to routes, that can be displayed on maps. It is based on https://xkcd.com/2260/. 
 
@@ -37,6 +37,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 <table>
   <tr>
     <td align="center"><a href="https://github.com/kadhonn"><img src="https://avatars3.githubusercontent.com/u/6959841?v=4" width="100px;" alt=""/><br /><sub><b>Matthias Ableidinger</b></sub></a><br /><a href="https://github.com/KatharinaSick/xkcd-map-reactions/commits?author=kadhonn" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/KatharinaSick"><img src="https://avatars2.githubusercontent.com/u/9420018?v=4" width="100px;" alt=""/><br /><sub><b>Katharina Sick</b></sub></a><br /><a href="https://github.com/KatharinaSick/xkcd-map-reactions/commits?author=KatharinaSick" title="Code">💻</a> <a href="#blog-KatharinaSick" title="Blogposts">📝</a> <a href="#ideas-KatharinaSick" title="Ideas, Planning, & Feedback">🤔</a></td>
   </tr>
 </table>
 
