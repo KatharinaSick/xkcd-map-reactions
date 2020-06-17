@@ -1,0 +1,35 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "contributors": [
+    {
+      "login": "kadhonn",
+      "name": "Matthias Ableidinger",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/6959841?v=4",
+      "profile": "https://github.com/kadhonn",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "KatharinaSick",
+      "name": "Katharina Sick",
+      "avatar_url": "https://avatars2.githubusercontent.com/u/9420018?v=4",
+      "profile": "https://github.com/KatharinaSick",
+      "contributions": [
+        "code",
+        "blog",
+        "ideas"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "projectName": "xkcd-map-reactions",
+  "projectOwner": "KatharinaSick",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true
+}
