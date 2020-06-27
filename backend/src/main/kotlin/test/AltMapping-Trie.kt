@@ -55,7 +55,7 @@ fun createTrie(): Trie {
     val words = mutableListOf<String>()
     val trie = Trie()
     var i = 0
-    Files.lines(Paths.get("E:\\Projects\\xkcd-map-reactions\\dbMigration\\src\\main\\resources\\US.txt"))
+    Files.lines(Paths.get("C:\\Users\\mableidinger\\own\\xkcd-map-reactions\\dbMigration\\src\\main\\resources\\US.txt"))
             .map { prepare(it.split("\t")[1]) }
             .map { it to encoder.encode(it).split("|") }
             .limit(200)
