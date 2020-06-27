@@ -1,40 +1,51 @@
 package dev.ksick.mapreactions;
 
 import android.Manifest;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Bundle;
+import android.os.StrictMode;
 import android.preference.PreferenceManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.res.ResourcesCompat;
 import androidx.fragment.app.Fragment;
-import androidx.navigation.fragment.NavHostFragment;
 
-import org.osmdroid.api.IMapController;
+import org.osmdroid.bonuspack.routing.OSRMRoadManager;
+import org.osmdroid.bonuspack.routing.Road;
+import org.osmdroid.bonuspack.routing.RoadManager;
 import org.osmdroid.config.Configuration;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
-import org.osmdroid.views.overlay.Marker;
+import org.osmdroid.views.overlay.Polyline;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.List;
+
+import dev.ksick.mapreactions.http.GetRouteResponseListener;
+import dev.ksick.mapreactions.http.GetRouteTask;
 
 public class MapFragment extends Fragment {
 
-    private final int REQUEST_PERMISSIONS_REQUEST_CODE = 1;
+    public static final String ARG_NAME_PHRASE = "phrase";
+    private final int PERMISSIONS_REQUEST_CODE = 1;
+
+    private String phrase = null;
 
     private MapView mapView = null;
+    private TextView textViewPhrase = null;
+    private TextView textViewRoute = null;
 
     @Override
-    public View onCreateView(
-            LayoutInflater inflater, ViewGroup container,
-            Bundle savedInstanceState
-    ) {
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         return inflater.inflate(R.layout.fragment_map, container, false);
     }
@@ -42,17 +53,25 @@ public class MapFragment extends Fragment {
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Necessary to make the OSM Map working
+        if (getArguments() == null) {
+            showError(getString(R.string.something_went_wrong_try_again));
+            return;
+        }
+
+        phrase = getArguments().getString(ARG_NAME_PHRASE);
+
+        // Initialize OSMDroid (Map)
         Configuration.getInstance().load(getContext(), PreferenceManager.getDefaultSharedPreferences(getContext()));
 
         mapView = view.findViewById(R.id.map_view);
-        mapView.setTileSource(TileSourceFactory.MAPNIK);
-        mapView.setMultiTouchControls(true);
+        textViewPhrase = view.findViewById(R.id.tv_phrase);
+        textViewRoute = view.findViewById(R.id.tv_route);
 
-        IMapController mapController = mapView.getController();
-        mapController.setZoom(9.5);
-        GeoPoint startPoint = new GeoPoint(48.8583, 2.2944);
-        mapController.setCenter(startPoint);
+        if (isStoragePermissionGranted()) {
+            loadRouteAndInitMap();
+        } else {
+            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSIONS_REQUEST_CODE);
+        }
     }
 
     @Override
@@ -65,5 +84,127 @@ public class MapFragment extends Fragment {
     public void onPause() {
         super.onPause();
         mapView.onPause();
+    }
+
+    private void loadRouteAndInitMap() {
+        new GetRouteTask(new GetRouteResponseListener() {
+            @Override
+            public void onSuccess(List<Place> route) {
+                if (route == null || route.isEmpty()) {
+                    showError(getString(R.string.something_went_wrong_try_again));
+                    return;
+                }
+
+                initMap(route);
+                showResultSummary(phrase, route);
+            }
+
+            @Override
+            public void onError(int statusCode) {
+                String errorMessage;
+                switch (statusCode) {
+                    case 400:
+                        errorMessage = getString(R.string.phrase_invalid);
+                        break;
+                    case 404:
+                        errorMessage = getString(R.string.route_not_found);
+                        break;
+                    default:
+                        errorMessage = getString(R.string.something_went_wrong_try_again);
+                }
+                showError(errorMessage);
+            }
+        }).execute(phrase);
+    }
+
+    private void initMap(List<Place> route) {
+        mapView.setTileSource(TileSourceFactory.MAPNIK);
+        mapView.setMultiTouchControls(true);
+
+        ArrayList<GeoPoint> waypoints = new ArrayList<>();
+        ArrayList<NumberedTextOverlay> textOverlays = new ArrayList<>();
+
+        int currentNumber = 1;
+        for (Place place : route) {
+            GeoPoint geoPoint = new GeoPoint(place.latitude, place.longitude);
+
+            waypoints.add(geoPoint);
+
+            NumberedTextOverlay numberedTextOverlay = new NumberedTextOverlay(currentNumber, place.name, geoPoint);
+            numberedTextOverlay.setTypeface(ResourcesCompat.getFont(getContext(), R.font.cabin));
+            numberedTextOverlay.setNumberTypeface(ResourcesCompat.getFont(getContext(), R.font.roboto_condensed_bold));
+            numberedTextOverlay.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
+            numberedTextOverlay.setTextColor(Color.WHITE);
+
+            textOverlays.add(numberedTextOverlay);
+            currentNumber = currentNumber + 1;
+        }
+
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
+
+        RoadManager roadManager = new OSRMRoadManager(getContext());
+        Road road = roadManager.getRoad(waypoints);
+        Polyline roadOverlay = RoadManager.buildRoadOverlay(road);
+        mapView.getOverlays().add(roadOverlay);
+
+        mapView.getOverlays().addAll(textOverlays);
+        mapView.zoomToBoundingBox(roadOverlay.getBounds(), true, 100);
+        mapView.invalidate();
+    }
+
+    private void showResultSummary(String phrase, List<Place> route) {
+        textViewPhrase.setText(String.format("\"%s\"", phrase));
+        StringBuilder routeStringBuilder = new StringBuilder("[");
+
+        for (Place place : route) {
+            if (routeStringBuilder.length() > 1) {
+                routeStringBuilder.append(", ");
+            }
+            routeStringBuilder.append(place.name);
+        }
+
+        routeStringBuilder.append("]");
+        textViewRoute.setText(routeStringBuilder.toString());
+    }
+
+    private void showError(String message) {
+        new AlertDialog.Builder(getContext())
+                .setTitle("Error")
+                .setMessage(message)
+                .show();
+    }
+
+    private boolean isStoragePermissionGranted() {
+        return ContextCompat.checkSelfPermission(getContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != PERMISSIONS_REQUEST_CODE) {
+            return;
+        }
+
+        if (isStoragePermissionGranted()) {
+            loadRouteAndInitMap();
+        } else {
+            new AlertDialog.Builder(getContext())
+                    .setTitle(R.string.storage_permission_necessary_title)
+                    .setMessage(R.string.storage_permission_necessary_message)
+                    .setPositiveButton(R.string.give_storage_permission, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSIONS_REQUEST_CODE);
+                        }
+                    })
+                    .setNegativeButton(R.string.close_app, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            getActivity().finish();
+                        }
+                    })
+                    .show();
+        }
     }
 }

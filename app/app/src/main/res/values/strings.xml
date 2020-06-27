@@ -7,4 +7,14 @@
 
     <string name="start_again">Neu starten</string>
     <string name="share">Teilen</string>
+
+    <string name="please_add_input">Bitte ausfüllen</string>
+    <string name="something_went_wrong_try_again">Etwas ist schiefgelaufen. Bitte versuch es nochmal.</string>
+    <string name="phrase_invalid">Dein Satz ist ungültig. Bitte versuch einen anderen.</string>
+    <string name="route_not_found">Für diesen Satz konnten wir leider keine Route finden.</string>
+
+    <string name="storage_permission_necessary_title">Fehler</string>
+    <string name="storage_permission_necessary_message">Die Karte kann leider nur geladen werden, wenn du uns erlaubst etwas auf deinem Telefon zu speichern.</string>
+    <string name="give_storage_permission">Erlaubnis erteilen</string>
+    <string name="close_app">App schließen</string>
 </resources>

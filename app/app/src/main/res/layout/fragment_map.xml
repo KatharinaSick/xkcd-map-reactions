@@ -33,7 +33,7 @@
             android:background="@drawable/app_background_gradient">
 
             <Button
-                android:id="@+id/button5"
+                android:id="@+id/button_start_again"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
@@ -66,22 +66,35 @@
                 android:textSize="16sp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toEndOf="@+id/button5" />
+                app:layout_constraintStart_toEndOf="@+id/button_start_again" />
 
             <TextView
                 android:id="@+id/tv_phrase"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
-                android:layout_marginTop="16dp"
                 android:layout_marginEnd="16dp"
-                android:layout_marginBottom="32dp"
+                android:layout_marginBottom="16dp"
                 android:fontFamily="@font/roboto_condensed_bold"
-                android:text="Truly sorry to loose a friend this way"
                 android:textAlignment="center"
                 android:textColor="@android:color/white"
                 android:textSize="20sp"
                 app:layout_constraintBottom_toTopOf="@+id/button_share"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent" />
+
+            <TextView
+                android:id="@+id/tv_route"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginEnd="16dp"
+                android:fontFamily="@font/cabin"
+                android:textAlignment="center"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"
+                app:layout_constraintBottom_toTopOf="@+id/tv_phrase"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
