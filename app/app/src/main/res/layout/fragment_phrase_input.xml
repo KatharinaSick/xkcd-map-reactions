@@ -27,6 +27,7 @@
         android:layout_marginEnd="24dp"
         android:background="@drawable/card_background"
         android:ems="10"
+        android:imeOptions="actionGo"
         android:fontFamily="@font/cabin"
         android:hint="@string/phrase_input_hint"
         android:inputType="text"
