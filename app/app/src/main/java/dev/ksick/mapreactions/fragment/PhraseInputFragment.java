@@ -83,6 +83,8 @@ public class PhraseInputFragment extends Fragment {
         Bundle arguments = new Bundle();
         arguments.putString(MapFragment.ARG_NAME_PHRASE, etPhrase.getText().toString().trim());
 
+        etPhrase.setText(null);
+
         NavHostFragment
                 .findNavController(PhraseInputFragment.this)
                 .navigate(R.id.action_PhraseInputFragment_to_MapFragment, arguments);

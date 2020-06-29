@@ -41,9 +41,9 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
 
-import dev.ksick.mapreactions.util.NumberedTextOverlay;
-import dev.ksick.mapreactions.model.Place;
 import dev.ksick.mapreactions.R;
+import dev.ksick.mapreactions.model.Place;
+import dev.ksick.mapreactions.util.NumberedTextOverlay;
 
 public class MapFragment extends Fragment {
 
@@ -78,6 +78,13 @@ public class MapFragment extends Fragment {
         mapView = view.findViewById(R.id.map_view);
         textViewPhrase = view.findViewById(R.id.tv_phrase);
         textViewRoute = view.findViewById(R.id.tv_route);
+
+        view.findViewById(R.id.button_start_again).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                getActivity().getSupportFragmentManager().popBackStackImmediate();
+            }
+        });
 
         if (isStoragePermissionGranted()) {
             loadRouteAndInitMap();
@@ -132,15 +139,19 @@ public class MapFragment extends Fragment {
                     @Override
                     public void onErrorResponse(VolleyError error) {
                         String errorMessage;
-                        switch (error.networkResponse.statusCode) {
-                            case 400:
-                                errorMessage = getString(R.string.phrase_invalid);
-                                break;
-                            case 404:
-                                errorMessage = getString(R.string.route_not_found);
-                                break;
-                            default:
-                                errorMessage = getString(R.string.something_went_wrong_try_again);
+                        if (error.networkResponse == null) {
+                            errorMessage = getString(R.string.something_went_wrong_try_again);
+                        } else {
+                            switch (error.networkResponse.statusCode) {
+                                case 400:
+                                    errorMessage = getString(R.string.phrase_invalid);
+                                    break;
+                                case 404:
+                                    errorMessage = getString(R.string.route_not_found);
+                                    break;
+                                default:
+                                    errorMessage = getString(R.string.something_went_wrong_try_again);
+                            }
                         }
                         showError(errorMessage);
                     }

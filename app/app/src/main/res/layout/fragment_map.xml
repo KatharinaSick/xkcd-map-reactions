@@ -47,26 +47,8 @@
                 android:textColor="@android:color/white"
                 android:textSize="16sp"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@+id/button_share"
-                app:layout_constraintStart_toStartOf="parent" />
-
-            <Button
-                android:id="@+id/button_share"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="16dp"
-                android:layout_marginBottom="16dp"
-                android:background="@android:color/transparent"
-                android:drawableTop="@drawable/ic_share"
-                android:fontFamily="@font/cabin"
-                android:text="@string/share"
-                android:textAllCaps="false"
-                android:textColor="@android:color/white"
-                android:textSize="16sp"
-                app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toEndOf="@+id/button_start_again" />
+                app:layout_constraintStart_toStartOf="parent" />
 
             <TextView
                 android:id="@+id/tv_phrase"
@@ -79,7 +61,7 @@
                 android:textAlignment="center"
                 android:textColor="@android:color/white"
                 android:textSize="20sp"
-                app:layout_constraintBottom_toTopOf="@+id/button_share"
+                app:layout_constraintBottom_toTopOf="@+id/button_start_again"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent" />
 
