@@ -1,4 +1,4 @@
-package dev.ksick.mapreactions;
+package dev.ksick.mapreactions.fragment;
 
 import android.Manifest;
 import android.app.AlertDialog;
@@ -40,6 +40,10 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
+
+import dev.ksick.mapreactions.util.NumberedTextOverlay;
+import dev.ksick.mapreactions.model.Place;
+import dev.ksick.mapreactions.R;
 
 public class MapFragment extends Fragment {
 
@@ -154,11 +158,11 @@ public class MapFragment extends Fragment {
 
         int currentNumber = 1;
         for (Place place : route) {
-            GeoPoint geoPoint = new GeoPoint(place.latitude, place.longitude);
+            GeoPoint geoPoint = new GeoPoint(place.getLatitude(), place.getLongitude());
 
             waypoints.add(geoPoint);
 
-            NumberedTextOverlay numberedTextOverlay = new NumberedTextOverlay(currentNumber, place.name, geoPoint);
+            NumberedTextOverlay numberedTextOverlay = new NumberedTextOverlay(currentNumber, place.getName(), geoPoint);
             numberedTextOverlay.setTypeface(ResourcesCompat.getFont(getContext(), R.font.cabin));
             numberedTextOverlay.setNumberTypeface(ResourcesCompat.getFont(getContext(), R.font.roboto_condensed_bold));
             numberedTextOverlay.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
@@ -189,7 +193,7 @@ public class MapFragment extends Fragment {
             if (routeStringBuilder.length() > 1) {
                 routeStringBuilder.append(", ");
             }
-            routeStringBuilder.append(place.name);
+            routeStringBuilder.append(place.getName());
         }
 
         routeStringBuilder.append("]");

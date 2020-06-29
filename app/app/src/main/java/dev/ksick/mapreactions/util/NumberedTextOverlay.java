@@ -1,4 +1,4 @@
-package dev.ksick.mapreactions;
+package dev.ksick.mapreactions.util;
 
 import android.graphics.Canvas;
 import android.graphics.Color;

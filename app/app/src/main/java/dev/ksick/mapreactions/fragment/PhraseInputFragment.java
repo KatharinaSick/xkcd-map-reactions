@@ -1,4 +1,4 @@
-package dev.ksick.mapreactions;
+package dev.ksick.mapreactions.fragment;
 
 import android.os.Bundle;
 import android.text.Editable;
@@ -14,6 +14,8 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.fragment.NavHostFragment;
+
+import dev.ksick.mapreactions.R;
 
 public class PhraseInputFragment extends Fragment {
 
