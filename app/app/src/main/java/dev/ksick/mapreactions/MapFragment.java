@@ -18,6 +18,15 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.fragment.app.Fragment;
 
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
 import org.osmdroid.bonuspack.routing.OSRMRoadManager;
 import org.osmdroid.bonuspack.routing.Road;
 import org.osmdroid.bonuspack.routing.RoadManager;
@@ -27,11 +36,10 @@ import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Polyline;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
-
-import dev.ksick.mapreactions.http.GetRouteResponseListener;
-import dev.ksick.mapreactions.http.GetRouteTask;
 
 public class MapFragment extends Fragment {
 
@@ -87,34 +95,54 @@ public class MapFragment extends Fragment {
     }
 
     private void loadRouteAndInitMap() {
-        new GetRouteTask(new GetRouteResponseListener() {
-            @Override
-            public void onSuccess(List<Place> route) {
-                if (route == null || route.isEmpty()) {
-                    showError(getString(R.string.something_went_wrong_try_again));
-                    return;
-                }
+        RequestQueue requestQueue = Volley.newRequestQueue(getContext());
+        String encodedPhrase;
+        try {
+            encodedPhrase = URLEncoder.encode(phrase, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            showError(getString(R.string.phrase_invalid));
+            return;
+        }
+        String url = "https://api.map-reactions.ksick.dev/v0-1/route?phrase=" + encodedPhrase;
 
-                initMap(route);
-                showResultSummary(phrase, route);
-            }
+        StringRequest routeRequest = new StringRequest(Request.Method.GET, url,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        List<Place> route = new Gson().fromJson(
+                                response,
+                                new TypeToken<ArrayList<Place>>() {
+                                }.getType()
+                        );
 
-            @Override
-            public void onError(int statusCode) {
-                String errorMessage;
-                switch (statusCode) {
-                    case 400:
-                        errorMessage = getString(R.string.phrase_invalid);
-                        break;
-                    case 404:
-                        errorMessage = getString(R.string.route_not_found);
-                        break;
-                    default:
-                        errorMessage = getString(R.string.something_went_wrong_try_again);
-                }
-                showError(errorMessage);
-            }
-        }).execute(phrase);
+                        if (route == null || route.isEmpty()) {
+                            showError(getString(R.string.something_went_wrong_try_again));
+                            return;
+                        }
+
+                        initMap(route);
+                        showResultSummary(phrase, route);
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        String errorMessage;
+                        switch (error.networkResponse.statusCode) {
+                            case 400:
+                                errorMessage = getString(R.string.phrase_invalid);
+                                break;
+                            case 404:
+                                errorMessage = getString(R.string.route_not_found);
+                                break;
+                            default:
+                                errorMessage = getString(R.string.something_went_wrong_try_again);
+                        }
+                        showError(errorMessage);
+                    }
+                });
+
+        requestQueue.add(routeRequest);
     }
 
     private void initMap(List<Place> route) {
@@ -145,7 +173,7 @@ public class MapFragment extends Fragment {
 
         RoadManager roadManager = new OSRMRoadManager(getContext());
         Road road = roadManager.getRoad(waypoints);
-        Polyline roadOverlay = RoadManager.buildRoadOverlay(road);
+        Polyline roadOverlay = RoadManager.buildRoadOverlay(road, getResources().getColor(R.color.colorPrimary), 8);
         mapView.getOverlays().add(roadOverlay);
 
         mapView.getOverlays().addAll(textOverlays);
