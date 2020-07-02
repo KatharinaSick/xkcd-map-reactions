@@ -1,7 +1,5 @@
 package test
 
-import org.apache.commons.codec.language.bm.BeiderMorseEncoder
-import java.lang.IllegalStateException
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.stream.Collectors
@@ -16,7 +14,6 @@ fun main() {
     println("create took: $measureTimeMillis ms")
     measureTimeMillis = measureTimeMillis {
 //        search(trie!!, "Truly sorry to loose a friend this way!")
-        search(trie!!, "znQpYril")
         search(trie!!, "sniperhill")
     }
     println("search took: $measureTimeMillis ms")
@@ -25,9 +22,7 @@ fun main() {
 fun search(trie: Trie, search: String) {
     val word = prepare(search)
     val results = mutableSetOf<Int>()
-    BeiderMorseEncoder().encode(word).split("|").forEach {
-        recursiveSearch(0, word, trie.getRoot(), results)
-    }
+    recursiveSearch(0, word, trie.getRoot(), results)
     results.forEach { println(trie.getWordList()[it]) }
 }
 
@@ -65,9 +60,15 @@ fun createTrie(): Trie {
     val words = mutableListOf<String>()
     val trie = Trie()
     var i = 0
-    Files.lines(Paths.get("C:\\Users\\mableidinger\\own\\xkcd-map-reactions\\dbMigration\\src\\main\\resources\\US-bm.txt"))
-        .map { it.split("|").map { prepare(it) } }
-        .map { it.first() to it.drop(1) }
+    Files.lines(Paths.get("C:\\Users\\mableidinger\\own\\xkcd-map-reactions\\dbMigration\\src\\main\\resources\\US.txt"))
+        .filter { it.isNotEmpty() }
+        .map {
+            val city = it.split("\t")[1]
+            city to prepare(city)
+        }
+        .filter {
+            it.first.isNotEmpty() && it.second.isNotEmpty()
+        }
 //        .limit(200)
         .forEach {
             i++
@@ -77,10 +78,7 @@ fun createTrie(): Trie {
 //                println(it)
             val index = words.size
             words.add(it.first)
-            it.second.forEach { word ->
-//                    println(word)
-                trie.addWord(index, word)
-            }
+            trie.addWord(index, it.second)
         }
     trie.setWordList(words)
     return trie
