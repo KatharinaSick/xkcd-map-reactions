@@ -48,9 +48,9 @@
                 <artifactId>flyway-maven-plugin</artifactId>
                 <version>6.4.3</version>
                 <configuration>
-                    <url></url>
-                    <user></user>
-                    <password></password>
+                    <url>jdbc:postgresql://localhost:5432/postgres</url>
+                    <user>postgres</user>
+                    <password>mysecretpassword</password>
                     <locations>
                         <location>classpath:db/migration</location>
                     </locations>

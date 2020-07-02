@@ -51,14 +51,13 @@ fun prepare(search: String): String {
 
 
 fun createTrie(): Trie {
-    val encoder = BeiderMorseEncoder()
     val words = mutableListOf<String>()
     val trie = Trie()
     var i = 0
-    Files.lines(Paths.get("C:\\Users\\mableidinger\\own\\xkcd-map-reactions\\dbMigration\\src\\main\\resources\\US.txt"))
-            .map { prepare(it.split("\t")[1]) }
-            .map { it to encoder.encode(it).split("|") }
-            .limit(200)
+    Files.lines(Paths.get("C:\\Users\\mableidinger\\own\\xkcd-map-reactions\\dbMigration\\src\\main\\resources\\US-bm.txt"))
+        .map { it.split("|") }
+        .map { it.first() to it.drop(1) }
+//            .limit(200)
             .forEach {
                 i++
                 if (i % 10000 == 0) {
