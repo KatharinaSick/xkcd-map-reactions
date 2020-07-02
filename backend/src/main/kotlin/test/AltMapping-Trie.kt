@@ -14,7 +14,7 @@ fun main() {
     println("create took: $measureTimeMillis ms")
     measureTimeMillis = measureTimeMillis {
 //        search(trie!!, "Truly sorry to loose a friend this way!")
-        search(trie!!, "sniperhill")
+        search(trie!!, "Sniper Hill")
     }
     println("search took: $measureTimeMillis ms")
 }
@@ -28,18 +28,9 @@ fun search(trie: Trie, search: String) {
 
 fun recursiveSearch(depth: Int, word: String, node: TrieNode, results: MutableSet<Int>) {
     if (depth < word.length) {
-        val firstChar = word[depth]
-        for (child in node.getChildren()) {
-            if (child.key.startsWith(firstChar)) {
-                var i = 1
-                while (i + depth < word.length && i < child.key.length && word[depth + i] == child.key[i]) {
-                    i++
-                }
-                if (child.key.length == i) {
-                    recursiveSearch(depth + i, word, child.value, results)
-                }
-                break
-            }
+        val c = word[depth]
+        if (node.hasChild(c)) {
+            recursiveSearch(depth + 1, word, node.getChild(c), results)
         }
     } else {
         if (node.isWord()) {
@@ -96,37 +87,17 @@ class Trie {
         recursiveAdd(0, word, root, index)
     }
 
-    private fun recursiveAdd(depth: Int, word: String, node: TrieNode, wordIndex: Int) {
-        var childFound = false
-        val firstChar = word[depth]
-        for (child in node.getChildren()) {
-            if (child.key.startsWith(firstChar)) {
-                childFound = true
-                var i = 1
-                while (i + depth < word.length && i < child.key.length && word[depth + i] == child.key[i]) {
-                    i++
-                }
-                if (i + depth == word.length && i == child.key.length) {
-                    child.value.addWord(wordIndex)
-                } else if (i == child.key.length) {
-                    recursiveAdd(depth + i, word, child.value, wordIndex)
-                } else {
-                    node.removeChild(child.key)
-                    val firstHalf = child.key.substring(0, i)
-                    val secondHalf = child.key.substring(i)
-                    val newChild = node.addChild(firstHalf)
-                    newChild.addChild(secondHalf, child.value)
-                    if (i + depth == word.length) {
-                        newChild.addWord(wordIndex)
-                    } else {
-                        recursiveAdd(i + depth, word, newChild, wordIndex)
-                    }
-                }
-                break
-            }
+    private fun recursiveAdd(depth: Int, word: String, node: TrieNode, index: Int) {
+        val char = word[depth]
+        val child = if (!node.hasChild(char)) {
+            node.addChild(char)
+        } else {
+            node.getChild(char)
         }
-        if (!childFound) {
-            node.addChild(word.substring(depth)).addWord(wordIndex)
+        if (depth + 1 < word.length) {
+            recursiveAdd(depth + 1, word, child, index)
+        } else {
+            child.addWord(index)
         }
     }
 
@@ -140,27 +111,27 @@ class Trie {
 }
 
 class TrieNode {
-    var children: MutableMap<String, TrieNode>? = null
+    var children: MutableMap<Char, TrieNode>? = null
     private var wordIndex: MutableSet<Int>? = null
 
-    fun hasChild(string: String): Boolean {
+    fun hasChild(char: Char): Boolean {
         if (children == null) {
             return false
         }
-        return children!!.containsKey(string)
+        return children!!.containsKey(char)
     }
 
-    fun addChild(string: String, child: TrieNode? = null): TrieNode {
+    fun addChild(char: Char): TrieNode {
         if (children == null) {
             children = HashMap(0)
         }
-        val newChild = child ?: TrieNode()
-        children!![string] = newChild
-        return newChild
+        val child = TrieNode()
+        children!![char] = child
+        return child
     }
 
-    fun getChild(string: String): TrieNode {
-        return children!![string]!!
+    fun getChild(char: Char): TrieNode {
+        return children!![char]!!
     }
 
     fun addWord(index: Int) {
@@ -181,15 +152,11 @@ class TrieNode {
         return wordIndex!!
     }
 
-    fun getChildren(): Set<Map.Entry<String, TrieNode>> {
+    fun getChildren(): Set<Map.Entry<Char, TrieNode>> {
         if (children == null) {
             return emptySet()
         }
         return children!!.entries
-    }
-
-    fun removeChild(string: String) {
-        children!!.remove(string)
     }
 
 }
