@@ -1,6 +1,7 @@
 package test
 
 import org.apache.commons.codec.language.bm.BeiderMorseEncoder
+import java.lang.IllegalStateException
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.stream.Collectors
@@ -16,37 +17,47 @@ fun main() {
     measureTimeMillis = measureTimeMillis {
 //        search(trie!!, "Truly sorry to loose a friend this way!")
         search(trie!!, "znQpYril")
-        println(BeiderMorseEncoder().encode("sniperhill"))
+        search(trie!!, "sniperhill")
     }
     println("search took: $measureTimeMillis ms")
 }
 
 fun search(trie: Trie, search: String) {
     val word = prepare(search)
-    val results = mutableSetOf<String>()
-    recursiveSearch(StringBuilder(), 0, word, trie.getRoot(), results)
-    results.forEach { println(it) }
+    val results = mutableSetOf<Int>()
+    BeiderMorseEncoder().encode(word).split("|").forEach {
+        recursiveSearch(0, word, trie.getRoot(), results)
+    }
+    results.forEach { println(trie.getWordList()[it]) }
 }
 
-fun recursiveSearch(currentWord: StringBuilder, depth: Int, word: String, node: TrieNode, results: MutableSet<String>) {
-    if (node.isWord()) {
-        results.add(currentWord.toString())
-    }
+fun recursiveSearch(depth: Int, word: String, node: TrieNode, results: MutableSet<Int>) {
     if (depth < word.length) {
-        val c = word[depth]
-        if (node.hasChild(c)) {
-            currentWord.append(c)
-            recursiveSearch(currentWord, depth + 1, word, node.getChild(c), results)
-            currentWord.setLength(currentWord.length - 1)
+        val firstChar = word[depth]
+        for (child in node.getChildren()) {
+            if (child.key.startsWith(firstChar)) {
+                var i = 1
+                while (i + depth < word.length && i < child.key.length && word[depth + i] == child.key[i]) {
+                    i++
+                }
+                if (child.key.length == i) {
+                    recursiveSearch(depth + i, word, child.value, results)
+                }
+                break
+            }
+        }
+    } else {
+        if (node.isWord()) {
+            results.addAll(node.getWords())
         }
     }
 }
 
 fun prepare(search: String): String {
     return search
-            .filter { it.isLetter() }
-            .map { it.toLowerCase().toString() }
-            .stream().collect(Collectors.joining())
+        .filter { it.isLetter() }
+        .map { it.toLowerCase().toString() }
+        .stream().collect(Collectors.joining())
 }
 
 
@@ -55,22 +66,22 @@ fun createTrie(): Trie {
     val trie = Trie()
     var i = 0
     Files.lines(Paths.get("C:\\Users\\mableidinger\\own\\xkcd-map-reactions\\dbMigration\\src\\main\\resources\\US-bm.txt"))
-        .map { it.split("|") }
+        .map { it.split("|").map { prepare(it) } }
         .map { it.first() to it.drop(1) }
-//            .limit(200)
-            .forEach {
-                i++
-                if (i % 10000 == 0) {
-                    println("${String.format("%3.0f", i.toFloat() / 2_200_000.toFloat() * 100)}%: ${i}/${2_200_000}")
-                }
-//                println(it)
-                val index = words.size
-                words.add(it.first)
-                it.second.forEach { word ->
-//                    println(word)
-                    trie.addWord(index, word)
-                }
+//        .limit(200)
+        .forEach {
+            i++
+            if (i % 10000 == 0) {
+                println("${String.format("%3.0f", i.toFloat() / 2_200_000.toFloat() * 100)}%: ${i}/${2_200_000}")
             }
+//                println(it)
+            val index = words.size
+            words.add(it.first)
+            it.second.forEach { word ->
+//                    println(word)
+                trie.addWord(index, word)
+            }
+        }
     trie.setWordList(words)
     return trie
 }
@@ -87,47 +98,71 @@ class Trie {
         recursiveAdd(0, word, root, index)
     }
 
-    private fun recursiveAdd(depth: Int, word: String, node: TrieNode, index: Int) {
-        val char = word[depth]
-        val child = if (!node.hasChild(char)) {
-            node.addChild(char)
-        } else {
-            node.getChild(char)
+    private fun recursiveAdd(depth: Int, word: String, node: TrieNode, wordIndex: Int) {
+        var childFound = false
+        val firstChar = word[depth]
+        for (child in node.getChildren()) {
+            if (child.key.startsWith(firstChar)) {
+                childFound = true
+                var i = 1
+                while (i + depth < word.length && i < child.key.length && word[depth + i] == child.key[i]) {
+                    i++
+                }
+                if (i + depth == word.length && i == child.key.length) {
+                    child.value.addWord(wordIndex)
+                } else if (i == child.key.length) {
+                    recursiveAdd(depth + i, word, child.value, wordIndex)
+                } else {
+                    node.removeChild(child.key)
+                    val firstHalf = child.key.substring(0, i)
+                    val secondHalf = child.key.substring(i)
+                    val newChild = node.addChild(firstHalf)
+                    newChild.addChild(secondHalf, child.value)
+                    if (i + depth == word.length) {
+                        newChild.addWord(wordIndex)
+                    } else {
+                        recursiveAdd(i + depth, word, newChild, wordIndex)
+                    }
+                }
+                break
+            }
         }
-        if (depth + 1 < word.length) {
-            recursiveAdd(depth + 1, word, child, index)
-        } else {
-            child.addWord(index)
+        if (!childFound) {
+            node.addChild(word.substring(depth)).addWord(wordIndex)
         }
     }
 
     fun setWordList(words: List<String>) {
         this.words = words;
     }
+
+    fun getWordList(): List<String> {
+        return this.words
+    }
 }
 
 class TrieNode {
-    var children: MutableMap<Char, TrieNode>? = null
+    var children: MutableMap<String, TrieNode>? = null
     private var wordIndex: MutableSet<Int>? = null
 
-    fun hasChild(char: Char): Boolean {
+    fun hasChild(string: String): Boolean {
         if (children == null) {
             return false
         }
-        return children!!.containsKey(char)
+        return children!!.containsKey(string)
     }
 
-    fun addChild(char: Char): TrieNode {
+    fun addChild(string: String, child: TrieNode? = null): TrieNode {
         if (children == null) {
             children = HashMap(0)
         }
-        val child = TrieNode()
-        children!![char] = child
-        return child
+        val newChild = child ?: TrieNode()
+        children!![string] = newChild
+        return newChild
     }
 
-    fun getChild(char: Char): TrieNode {
-        return children!![char]!!
+    fun getChild(string: String): TrieNode {
+        return children!![string]!!
     }
 
     fun addWord(index: Int) {
@@ -148,11 +183,15 @@ class TrieNode {
         return wordIndex!!
     }
 
-    fun getChildren(): Set<Map.Entry<Char, TrieNode>> {
+    fun getChildren(): Set<Map.Entry<String, TrieNode>> {
         if (children == null) {
             return emptySet()
         }
         return children!!.entries
+    }
+
+    fun removeChild(string: String) {
+        children!!.remove(string)
     }
 
 }
