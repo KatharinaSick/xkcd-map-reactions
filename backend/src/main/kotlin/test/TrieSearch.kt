@@ -1,6 +1,8 @@
 package test
 
-class TrieSearch(private val trie: Trie, private val word: String) {
+import java.util.stream.Collectors
+
+class TrieSearch(private val trie: Trie, private val search: String) {
     companion object {
         val FUZZY_GROUPS = listOf(
             setOf("z", "zz", "s", "ss", "ts", "zs"),
@@ -24,22 +26,35 @@ class TrieSearch(private val trie: Trie, private val word: String) {
         }
     }
 
-    private val results = mutableSetOf<Int>()
+    private val word = prepare(search)
+    private val results = mutableSetOf<List<Int>>()
 
-    fun search(): Set<Int> {
-        recursiveSearch(0, trie.getRoot())
+    fun search(): Set<List<Int>> {
+        recursiveSearch(0, trie.getRoot(), mutableListOf())
         return results
     }
 
-    private fun recursiveSearch(depth: Int, node: TrieNode) {
-        if (depth < word.length) {
-            val nextNodes = collectNextNodes(depth, node)
-            for (nextNode in nextNodes) {
-                recursiveSearch(nextNode.first, nextNode.second)
+    private fun recursiveSearch(depth: Int, node: TrieNode, currentResult: MutableList<Int>) {
+        if (depth >= word.length) {
+            if (node.isWord()) {
+                currentResult.add(node.getWords().first()) //TODO do not use first
+                results.add(currentResult.toList())
+                currentResult.removeAt(currentResult.size - 1)
             }
         } else {
-            if (node.isWord()) {
-                results.addAll(node.getWords())
+            //word end means we use this city, otherwise we continue until we find a valid city (=merge multiple words)
+            if (word[depth] == '|' && node.isWord()) {
+                currentResult.add(node.getWords().first()) //TODO do not use first
+                recursiveSearch(depth + 1, trie.getRoot(), currentResult)
+                currentResult.removeAt(currentResult.size - 1)
+            } else {
+                if (depth < word.length) {
+                    val depthForNextNode = if (word[depth] == '|') depth + 1 else depth
+                    val nextNodes = collectNextNodes(depthForNextNode, node)
+                    for (nextNode in nextNodes) {
+                        recursiveSearch(nextNode.first, nextNode.second, currentResult)
+                    }
+                }
             }
         }
     }
@@ -80,5 +95,14 @@ class TrieSearch(private val trie: Trie, private val word: String) {
             }
         }
         return nextNodes
+    }
+
+    private fun prepare(search: String): String {
+        return search
+            .filter { it.isLetter() || it.isWhitespace() }
+            .map { it.toLowerCase().toString() }
+            .stream().collect(Collectors.joining())
+            .split("\\s+".toRegex())
+            .joinToString("|")
     }
 }

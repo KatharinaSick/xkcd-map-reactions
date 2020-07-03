@@ -1,5 +1,6 @@
 package test
 
+import org.apache.commons.text.similarity.LevenshteinDistance
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.stream.Collectors
@@ -13,17 +14,16 @@ fun main() {
     }
     println("create took: $measureTimeMillis ms")
     measureTimeMillis = measureTimeMillis {
-        search(trie!!, "truly")
-        search(trie!!, "sorry")
-        search(trie!!, "truly sorry")
+        search(trie!!, "truly sorry to loose a friendship this way")
     }
     println("search took: $measureTimeMillis ms")
 }
 
 fun search(trie: Trie, search: String) {
-    val word = prepare(search)
-    val results = TrieSearch(trie, word).search()
-    results.forEach { println(trie.getWordList()[it]) }
+    val results = TrieSearch(trie, search).search()
+    val wordList = trie.getWordList()
+    val result = results.map { it.map { wordList[it] }.joinToString(" ") }
+    println(result.minBy { LevenshteinDistance().apply(search, it) })
 }
 
 fun prepare(search: String): String {
