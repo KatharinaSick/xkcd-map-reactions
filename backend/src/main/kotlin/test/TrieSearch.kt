@@ -1,9 +1,11 @@
 package test
 
+import org.apache.commons.text.similarity.LevenshteinDistance
 import java.util.stream.Collectors
 
 class TrieSearch(private val trie: Trie, search: String) {
     companion object {
+        val LEVENSHTEIN_DISTANCE = LevenshteinDistance()
         val FUZZY_GROUPS = listOf(
             setOf("z", "zz", "s", "ss", "ts", "zs"),
             ofPair("c", "z"),
@@ -53,11 +55,13 @@ class TrieSearch(private val trie: Trie, search: String) {
                     completeFromCache(depth + 1)
                 } else {
                     recursiveSearch(depth + 1, trie.getRoot(), depth + 1)
-                    //means no possible solution exists for this path
                     if (!cache.containsKey(depth + 1) || cache[depth + 1]!!.isEmpty()) {
+                        //means no possible solution exists for this path
                         cache[depth + 1] = mutableListOf()
+                    } else {
+                        //means we found values, we want to compress them
+                        cleanupCache(depth + 1)
                     }
-                    //TODO cleanup cache?
                 }
                 currentResult.removeAt(currentResult.size - 1)
             }
@@ -67,6 +71,29 @@ class TrieSearch(private val trie: Trie, search: String) {
                 recursiveSearch(nextNode.first, nextNode.second, lastWordStartDepth)
             }
         }
+    }
+
+    private fun cleanupCache(depth: Int) {
+        val wordList = trie.getWordList()
+        val wordSuffix = word.substring(depth).filter { it != '|' }
+        val cleanedUpCache = mutableListOf<List<Int>>()
+        var min = Integer.MAX_VALUE
+        for (cacheEntry in cache[depth]!!) {
+            val cacheWord = cacheEntry.map { wordList[it] }.joinToString("")
+            //TODO takes too long for longer substrings, think of something different hacked a 20 max length for now
+            val currentDistance = LEVENSHTEIN_DISTANCE.apply(
+                wordSuffix.substring(0, Math.min(wordSuffix.length, 20)),
+                cacheWord.substring(0, Math.min(cacheWord.length, 20))
+            )
+            if (currentDistance < min) {
+                cleanedUpCache.clear()
+                min = currentDistance
+            }
+            if (currentDistance == min) {
+                cleanedUpCache.add(cacheEntry)
+            }
+        }
+        cache[depth] = cleanedUpCache
     }
 
     private fun fillCacheWithResult(result: List<Pair<Int, Int>>) {
