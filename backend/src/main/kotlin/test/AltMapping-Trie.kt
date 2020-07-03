@@ -13,8 +13,9 @@ fun main() {
     }
     println("create took: $measureTimeMillis ms")
     measureTimeMillis = measureTimeMillis {
-//        search(trie!!, "Truly sorry to loose a friend this way!")
-        search(trie!!, "Sniper Hill")
+        search(trie!!, "truly")
+        search(trie!!, "sorry")
+        search(trie!!, "truly sorry")
     }
     println("search took: $measureTimeMillis ms")
 }

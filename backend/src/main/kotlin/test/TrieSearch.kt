@@ -3,11 +3,13 @@ package test
 class TrieSearch(private val trie: Trie, private val word: String) {
     companion object {
         val FUZZY_GROUPS = listOf(
-            setOf("z", "zz", "s", "ss", "ts", "zs", "c", "cc"),
+            setOf("z", "zz", "s", "ss", "ts", "zs"),
+            ofPair("c", "z"),
             ofPair("a", "e"),
             ofPair("i", "y"),
             ofPair("m", "n"),
             ofPair("o", "u"),
+            ofPair("o", "a"),
             ofPair("a", "e"),
             ofPair("b", "p"),
             ofPair("g", "k"),
@@ -56,7 +58,8 @@ class TrieSearch(private val trie: Trie, private val word: String) {
             .toSet()
 
         if (fuzzyNextStrings.isEmpty()) {
-            fuzzyNextStrings = setOf(word.substring(depth, depth + 1))
+            val nextChar = word.substring(depth, depth + 1)
+            fuzzyNextStrings = setOf(nextChar, nextChar + nextChar)
         }
 
         val nextNodes = mutableListOf<Pair<Int, TrieNode>>()
@@ -72,7 +75,8 @@ class TrieSearch(private val trie: Trie, private val word: String) {
                 }
             }
             if (valid) {
-                nextNodes.add(Pair(depth + fuzzyNextString.length, currentNode))
+                nextNodes.add(Pair(depth + 1, currentNode))
+                nextNodes.add(Pair(depth + 2, currentNode))
             }
         }
         return nextNodes
