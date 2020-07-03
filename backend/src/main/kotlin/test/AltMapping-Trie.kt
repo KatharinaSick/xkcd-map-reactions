@@ -23,6 +23,7 @@ fun search(trie: Trie, search: String) {
     val results = TrieSearch(trie, search).search()
     val wordList = trie.getWordList()
     val result = results.map { it.map { wordList[it] }.joinToString(" ") }
+    println("size: " + result.size)
     println(result.minBy { LevenshteinDistance().apply(search, it) })
 }
 

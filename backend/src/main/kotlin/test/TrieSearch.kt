@@ -2,7 +2,7 @@ package test
 
 import java.util.stream.Collectors
 
-class TrieSearch(private val trie: Trie, private val search: String) {
+class TrieSearch(private val trie: Trie, search: String) {
     companion object {
         val FUZZY_GROUPS = listOf(
             setOf("z", "zz", "s", "ss", "ts", "zs"),
@@ -28,34 +28,65 @@ class TrieSearch(private val trie: Trie, private val search: String) {
 
     private val word = prepare(search)
     private val results = mutableSetOf<List<Int>>()
-    private val currentResult = mutableListOf<Int>()
+    private val currentResult = mutableListOf<Pair<Int, Int>>()
+    private val cache = mutableMapOf<Int, MutableList<List<Int>>>()
 
     fun search(): Set<List<Int>> {
-        recursiveSearch(0, trie.getRoot())
+        recursiveSearch(0, trie.getRoot(), 0)
         return results
     }
 
-    private fun recursiveSearch(depth: Int, node: TrieNode) {
+    private fun recursiveSearch(depth: Int, node: TrieNode, lastWordStartDepth: Int) {
         if (depth >= word.length) {
             if (node.isWord()) {
-                currentResult.add(node.getWords().first()) //TODO do not use first
-                results.add(currentResult.toList())
+                currentResult.add(Pair(lastWordStartDepth, node.getWords().first())) //TODO do not use first
+                val result = currentResult.toList()
+                fillCacheWithResult(result)
+                results.add(result.map { it.second })
                 currentResult.removeAt(currentResult.size - 1)
             }
         } else {
             //word end means we use this city, otherwise we continue until we find a valid city (=merge multiple words)
             if (word[depth] == '|' && node.isWord()) {
-                currentResult.add(node.getWords().first()) //TODO do not use first
-                recursiveSearch(depth + 1, trie.getRoot())
-                currentResult.removeAt(currentResult.size - 1)
-            } else {
-                if (depth < word.length) {
-                    val depthForNextNode = if (word[depth] == '|') depth + 1 else depth
-                    val nextNodes = collectNextNodes(depthForNextNode, node)
-                    for (nextNode in nextNodes) {
-                        recursiveSearch(nextNode.first, nextNode.second)
-                    }
+                currentResult.add(Pair(lastWordStartDepth, node.getWords().first())) //TODO do not use first
+                if (cache.containsKey(depth + 1)) {
+                    completeFromCache(depth + 1)
+                } else {
+                    recursiveSearch(depth + 1, trie.getRoot(), depth + 1)
+                    //TODO cleanup cache?
                 }
+                currentResult.removeAt(currentResult.size - 1)
+            }
+            val depthForNextNode = if (word[depth] == '|') depth + 1 else depth
+            val nextNodes = collectNextNodes(depthForNextNode, node)
+            for (nextNode in nextNodes) {
+                recursiveSearch(nextNode.first, nextNode.second, lastWordStartDepth)
+            }
+        }
+    }
+
+    private fun fillCacheWithResult(result: List<Pair<Int, Int>>) {
+        val currentSuffix = mutableListOf<Int>()
+        for (pair in result.reversed()) {
+            currentSuffix.add(0, pair.second)
+            if (pair.first != -1) {
+                if (!cache.containsKey(pair.first)) {
+                    cache[pair.first] = mutableListOf()
+                }
+                cache[pair.first]!!.add(currentSuffix.toList())
+            }
+        }
+    }
+
+    private fun completeFromCache(depth: Int) {
+        val originalResultSize = currentResult.size
+        for (cacheResult in cache[depth]!!) {
+            currentResult.addAll(cacheResult.map { -1 to it })
+            val result = currentResult.toList()
+            fillCacheWithResult(result)
+            results.add(result.map { it.second })
+            for (i in 1..currentResult.size - originalResultSize) {
+                currentResult.removeAt(currentResult.size - 1)
             }
         }
     }
