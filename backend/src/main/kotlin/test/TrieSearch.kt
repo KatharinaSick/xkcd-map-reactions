@@ -8,6 +8,8 @@ class TrieSearch(private val trie: Trie, search: String) {
         val LEVENSHTEIN_DISTANCE = LevenshteinDistance()
         val FUZZY_GROUPS = listOf(
             setOf("z", "zz", "s", "ss", "ts", "zs"),
+            setOf("ou","oe","ue","uo"),
+            setOf("qu","k"),
             ofPair("c", "z"),
             ofPair("a", "e"),
             ofPair("i", "y"),
@@ -74,7 +76,7 @@ class TrieSearch(private val trie: Trie, search: String) {
     }
 
     private fun cleanupCache(depth: Int) {
-        val wordList = trie.getWordList()
+        val wordList = trie.getWordList()//TODO should not do this -> this is later in the db
         val wordSuffix = word.substring(depth).filter { it != '|' }
         val cleanedUpCache = mutableListOf<List<Int>>()
         var min = Integer.MAX_VALUE
@@ -82,8 +84,8 @@ class TrieSearch(private val trie: Trie, search: String) {
             val cacheWord = cacheEntry.map { wordList[it] }.joinToString("")
             //TODO takes too long for longer substrings, think of something different hacked a 20 max length for now
             val currentDistance = LEVENSHTEIN_DISTANCE.apply(
-                wordSuffix.substring(0, Math.min(wordSuffix.length, 20)),
-                cacheWord.substring(0, Math.min(cacheWord.length, 20))
+                wordSuffix.substring(0, Math.min(wordSuffix.length, 1000)),
+                cacheWord.substring(0, Math.min(cacheWord.length, 1000))
             )
             if (currentDistance < min) {
                 cleanedUpCache.clear()
