@@ -28,13 +28,14 @@ class TrieSearch(private val trie: Trie, private val search: String) {
 
     private val word = prepare(search)
     private val results = mutableSetOf<List<Int>>()
+    private val currentResult = mutableListOf<Int>()
 
     fun search(): Set<List<Int>> {
-        recursiveSearch(0, trie.getRoot(), mutableListOf())
+        recursiveSearch(0, trie.getRoot())
         return results
     }
 
-    private fun recursiveSearch(depth: Int, node: TrieNode, currentResult: MutableList<Int>) {
+    private fun recursiveSearch(depth: Int, node: TrieNode) {
         if (depth >= word.length) {
             if (node.isWord()) {
                 currentResult.add(node.getWords().first()) //TODO do not use first
@@ -45,14 +46,14 @@ class TrieSearch(private val trie: Trie, private val search: String) {
             //word end means we use this city, otherwise we continue until we find a valid city (=merge multiple words)
             if (word[depth] == '|' && node.isWord()) {
                 currentResult.add(node.getWords().first()) //TODO do not use first
-                recursiveSearch(depth + 1, trie.getRoot(), currentResult)
+                recursiveSearch(depth + 1, trie.getRoot())
                 currentResult.removeAt(currentResult.size - 1)
             } else {
                 if (depth < word.length) {
                     val depthForNextNode = if (word[depth] == '|') depth + 1 else depth
                     val nextNodes = collectNextNodes(depthForNextNode, node)
                     for (nextNode in nextNodes) {
-                        recursiveSearch(nextNode.first, nextNode.second, currentResult)
+                        recursiveSearch(nextNode.first, nextNode.second)
                     }
                 }
             }
