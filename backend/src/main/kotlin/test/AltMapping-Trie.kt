@@ -21,22 +21,8 @@ fun main() {
 
 fun search(trie: Trie, search: String) {
     val word = prepare(search)
-    val results = mutableSetOf<Int>()
-    recursiveSearch(0, word, trie.getRoot(), results)
+    val results = TrieSearch(trie, word).search()
     results.forEach { println(trie.getWordList()[it]) }
-}
-
-fun recursiveSearch(depth: Int, word: String, node: TrieNode, results: MutableSet<Int>) {
-    if (depth < word.length) {
-        val c = word[depth]
-        if (node.hasChild(c)) {
-            recursiveSearch(depth + 1, word, node.getChild(c), results)
-        }
-    } else {
-        if (node.isWord()) {
-            results.addAll(node.getWords())
-        }
-    }
 }
 
 fun prepare(search: String): String {
@@ -45,7 +31,6 @@ fun prepare(search: String): String {
         .map { it.toLowerCase().toString() }
         .stream().collect(Collectors.joining())
 }
-
 
 fun createTrie(): Trie {
     val words = mutableListOf<String>()
