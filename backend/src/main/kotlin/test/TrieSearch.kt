@@ -53,6 +53,10 @@ class TrieSearch(private val trie: Trie, search: String) {
                     completeFromCache(depth + 1)
                 } else {
                     recursiveSearch(depth + 1, trie.getRoot(), depth + 1)
+                    //means no possible solution exists for this path
+                    if (!cache.containsKey(depth + 1) || cache[depth + 1]!!.isEmpty()) {
+                        cache[depth + 1] = mutableListOf()
+                    }
                     //TODO cleanup cache?
                 }
                 currentResult.removeAt(currentResult.size - 1)
