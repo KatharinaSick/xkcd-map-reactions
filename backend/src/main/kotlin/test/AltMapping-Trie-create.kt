@@ -8,7 +8,6 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.stream.Collectors
 import java.util.zip.GZIPOutputStream
-import java.util.zip.ZipOutputStream
 import kotlin.system.measureTimeMillis
 
 fun main() {
@@ -31,25 +30,25 @@ fun main() {
 fun saveTrie(trie: CreateTrie) {
     val out =
         BufferedOutputStream(
-        GZIPOutputStream(
-            FileOutputStream(File("C:\\Users\\mableidinger\\own\\xkcd-map-reactions\\dbMigration\\src\\main\\resources\\US.trie"))))
+            GZIPOutputStream(
+                FileOutputStream(File("C:\\Users\\mableidinger\\own\\xkcd-map-reactions\\dbMigration\\src\\main\\resources\\US.trie"))
+            )
+        )
 
-    trie.getRoot().getChildren().forEach {
-        recursiveSaveTrie(out, it.key, it.value)
-    }
+    recursiveSaveTrie(out, 0.toChar(), trie.getRoot())
 
     out.flush()
     out.close()
 }
 
-fun recursiveSaveTrie(out: OutputStream, char: Char, node: TrieNode) {
+fun recursiveSaveTrie(out: OutputStream, char: Char, node: TrieNodeCreate) {
     out.write(char.toInt().shr(8))
     out.write(char.toInt())
     out.write(node.offset.shr(24))
     out.write(node.offset.shr(16))
     out.write(node.offset.shr(8))
     out.write(node.offset)
-    out.write(node.getChildren().size)
+    out.write(node.getWords().size)
     node.getWords().forEach {
         out.write(it.shr(24))
         out.write(it.shr(16))
@@ -104,9 +103,9 @@ class CreateTrie {
     }
 
     private lateinit var words: List<String>
-    private val root = TrieNode()
+    private val root = TrieNodeCreate()
 
-    fun getRoot(): TrieNode {
+    fun getRoot(): TrieNodeCreate {
         return root
     }
 
@@ -114,7 +113,7 @@ class CreateTrie {
         recursiveAdd(0, word, root, index)
     }
 
-    private fun recursiveAdd(depth: Int, word: String, node: TrieNode, index: Int) {
+    private fun recursiveAdd(depth: Int, word: String, node: TrieNodeCreate, index: Int) {
         val char = word[depth]
         val child = if (!node.hasChild(char)) {
             node.addChild(char)
@@ -140,8 +139,8 @@ class CreateTrie {
         println(calculateOffsetsRecursive(0, root))
     }
 
-    private fun calculateOffsetsRecursive(oldOffset: Int, node: TrieNode): Int {
-        var myOffset = oldOffset + if (node === root) 0 else NODE_SIZE
+    private fun calculateOffsetsRecursive(oldOffset: Int, node: TrieNodeCreate): Int {
+        var myOffset = oldOffset + NODE_SIZE
         myOffset += node.getWords().size * WORD_SIZE
         for (child in node.getChildren()) {
             myOffset = calculateOffsetsRecursive(myOffset, child.value)
@@ -151,8 +150,8 @@ class CreateTrie {
     }
 }
 
-class TrieNode {
-    var children: MutableMap<Char, TrieNode>? = null
+class TrieNodeCreate {
+    var children: MutableMap<Char, TrieNodeCreate>? = null
     private var wordIndex: MutableSet<Int>? = null
     var offset: Int = 0
 
@@ -163,16 +162,16 @@ class TrieNode {
         return children!!.containsKey(char)
     }
 
-    fun addChild(char: Char): TrieNode {
+    fun addChild(char: Char): TrieNodeCreate {
         if (children == null) {
             children = HashMap(0)
         }
-        val child = TrieNode()
+        val child = TrieNodeCreate()
         children!![char] = child
         return child
     }
 
-    fun getChild(char: Char): TrieNode {
+    fun getChild(char: Char): TrieNodeCreate {
         return children!![char]!!
     }
 
@@ -197,7 +196,7 @@ class TrieNode {
         return wordIndex!!
     }
 
-    fun getChildren(): List<Map.Entry<Char, TrieNode>> {
+    fun getChildren(): List<Map.Entry<Char, TrieNodeCreate>> {
         if (children == null) {
             return emptyList()
         }
