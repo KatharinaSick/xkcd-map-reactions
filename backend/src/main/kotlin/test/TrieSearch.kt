@@ -31,62 +31,54 @@ class TrieSearch(private val trie: Trie, search: String) {
     }
 
     private val word = prepare(search)
-    private val results = mutableSetOf<List<Int>>()
-    private val currentResult = mutableListOf<Pair<Int, Int>>()
-    private val cache = mutableMapOf<Int, MutableList<List<Int>>>()
+    private val cache = mutableMapOf<Int, MutableList<Pair<Int, Int?>>>()
 
     fun search(): Set<List<Int>> {
         recursiveSearch(0, trie.getRoot(), 0)
-        return results
+        return expandResults()
     }
 
     private fun recursiveSearch(depth: Int, node: TrieNode, lastWordStartDepth: Int) {
         if (depth >= word.length) {
             if (node.isWord()) {
-                currentResult.add(Pair(lastWordStartDepth, node.getWords().first())) //TODO do not use first
-                val result = currentResult.toList()
-                fillCacheWithResult(result)
-                results.add(result.map { it.second })
-                currentResult.removeAt(currentResult.size - 1)
+                fillCacheWithResult(lastWordStartDepth, node.getWords().first(), null) //TODO do not use first
             }
-        } else {
-            //word end means we use this city, otherwise we continue until we find a valid city (=merge multiple words)
-            if (word[depth] == '|' && node.isWord()) {
-                currentResult.add(Pair(lastWordStartDepth, node.getWords().first())) //TODO do not use first
-                if (cache.containsKey(depth + 1)) {
-                    completeFromCache(depth + 1)
-                } else {
-                    recursiveSearch(depth + 1, trie.getRoot(), depth + 1)
-                    if (!cache.containsKey(depth + 1) || cache[depth + 1]!!.isEmpty()) {
-                        //means no possible solution exists for this path
-                        cache[depth + 1] = mutableListOf()
-                    } else {
-                        //means we found values, we want to compress them
-                        cleanupCache(depth + 1)
-                    }
+            return
+        }
+        //word end means we use this city, otherwise we continue until we find a valid city (=merge multiple words)
+        if (word[depth] == '|' && node.isWord()) {
+            if (cache.containsKey(depth + 1)) {
+                if (cache[depth + 1]!!.isNotEmpty()) {
+                    fillCacheWithResult(lastWordStartDepth, node.getWords().first(), depth + 1) //TODO do not use first
                 }
-                currentResult.removeAt(currentResult.size - 1)
+            } else {
+                recursiveSearch(depth + 1, trie.getRoot(), depth + 1)
+                if (!cache.containsKey(depth + 1) || cache[depth + 1]!!.isEmpty()) {
+                    //means no possible solution exists for this path
+                    cache[depth + 1] = mutableListOf()
+                } else {
+                    //means we found values, we want to compress them
+                    cleanupCache(depth + 1)
+                    fillCacheWithResult(lastWordStartDepth, node.getWords().first(), depth + 1) //TODO do not use first
+                }
             }
-            val depthForNextNode = if (word[depth] == '|') depth + 1 else depth
-            val nextNodes = collectNextNodes(depthForNextNode, node)
-            for (nextNode in nextNodes) {
-                recursiveSearch(nextNode.first, nextNode.second, lastWordStartDepth)
-            }
+        }
+        val depthForNextNode = if (word[depth] == '|') depth + 1 else depth
+        val nextNodes = collectNextNodes(depthForNextNode, node)
+        for (nextNode in nextNodes) {
+            recursiveSearch(nextNode.first, nextNode.second, lastWordStartDepth)
         }
     }
 
     private fun cleanupCache(depth: Int) {
         val wordList = trie.getWordList()//TODO should not do this -> this is later in the db
-        val wordSuffix = word.substring(depth).filter { it != '|' }
-        val cleanedUpCache = mutableListOf<List<Int>>()
+        val cleanedUpCache = mutableListOf<Pair<Int, Int?>>()
         var min = Integer.MAX_VALUE
         for (cacheEntry in cache[depth]!!) {
-            val cacheWord = cacheEntry.map { wordList[it] }.joinToString("")
-            //TODO takes too long for longer substrings, think of something different hacked a 20 max length for now
-            val currentDistance = LEVENSHTEIN_DISTANCE.apply(
-                wordSuffix.substring(0, Math.min(wordSuffix.length, 1000)),
-                cacheWord.substring(0, Math.min(cacheWord.length, 1000))
-            )
+            val wordSuffix = word.substring(depth, if (cacheEntry.second == null) word.length else cacheEntry.second!!)
+                .filter { it != '|' }
+            val cacheWord = prepare(wordList[cacheEntry.first]).filter { it != '|' }
+            val currentDistance = LEVENSHTEIN_DISTANCE.apply(wordSuffix, cacheWord)
             if (currentDistance < min) {
                 cleanedUpCache.clear()
                 min = currentDistance
@@ -98,30 +90,11 @@ class TrieSearch(private val trie: Trie, search: String) {
         cache[depth] = cleanedUpCache
     }
 
-    private fun fillCacheWithResult(result: List<Pair<Int, Int>>) {
-        val currentSuffix = mutableListOf<Int>()
-        for (pair in result.reversed()) {
-            currentSuffix.add(0, pair.second)
-            if (pair.first != -1) {
-                if (!cache.containsKey(pair.first)) {
-                    cache[pair.first] = mutableListOf()
-                }
-                cache[pair.first]!!.add(currentSuffix.toList())
-            }
+    private fun fillCacheWithResult(depth: Int, wordIndex: Int, nextSuffix: Int?) {
+        if (!cache.containsKey(depth)) {
+            cache[depth] = mutableListOf()
         }
-    }
-
-    private fun completeFromCache(depth: Int) {
-        val originalResultSize = currentResult.size
-        for (cacheResult in cache[depth]!!) {
-            currentResult.addAll(cacheResult.map { -1 to it })
-            val result = currentResult.toList()
-            fillCacheWithResult(result)
-            results.add(result.map { it.second })
-            for (i in 1..currentResult.size - originalResultSize) {
-                currentResult.removeAt(currentResult.size - 1)
-            }
-        }
+        cache[depth]!!.add(Pair(wordIndex, nextSuffix))
     }
 
     private fun collectNextNodes(depth: Int, node: TrieNode): List<Pair<Int, TrieNode>> {
@@ -169,5 +142,30 @@ class TrieSearch(private val trie: Trie, search: String) {
             .stream().collect(Collectors.joining())
             .split("\\s+".toRegex())
             .joinToString("|")
+    }
+
+    private fun expandResults(): Set<List<Int>> {
+        if (!cache.containsKey(0)) {
+            return emptySet()
+        }
+        val results = mutableSetOf<List<Int>>()
+        expandResultsRecursive(cache[0]!!, mutableListOf(), results)
+        return results
+    }
+
+    private fun expandResultsRecursive(
+        currentCacheEntry: MutableList<Pair<Int, Int?>>,
+        currentResult: MutableList<Int>,
+        results: MutableSet<List<Int>>
+    ) {
+        for (entry in currentCacheEntry) {
+            currentResult.add(entry.first)
+            if (entry.second != null) {
+                expandResultsRecursive(cache[entry.second!!]!!, currentResult, results)
+            } else {
+                results.add(currentResult.toList())
+            }
+            currentResult.removeAt(currentResult.size - 1)
+        }
     }
 }

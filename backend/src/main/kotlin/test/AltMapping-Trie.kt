@@ -19,7 +19,7 @@ fun main() {
     println("load took: $measureTimeMillis ms")
     measureTimeMillis = measureTimeMillis {
         search(trie!!, "truly sorry to loose a friendship this way")
-//        search(trie!!, "truly sorry to loose a friendship this way truly sorry to loose a friendship this way truly sorry to loose a friendship this way")
+        search(trie!!, "truly sorry to loose a friendship this way truly sorry to loose a friendship this way truly sorry to loose a friendship this way")
         search(trie!!, "hope you fall in a big hole")
     }
     println("search took: $measureTimeMillis ms")
