@@ -31,9 +31,9 @@ class TrieSearch(private val trie: Trie, search: String) {
     }
 
     private val word = prepare(search)
-    private val cache = mutableMapOf<Int, MutableList<Pair<Int, Int?>>>()
+    private val cache = mutableMapOf<Int, MutableSet<Pair<Int, Int?>>>()
 
-    fun search(): Set<List<Int>> {
+    fun search(): List<List<Int>> {
         recursiveSearch(0, trie.getRoot(), 0)
         return expandResults()
     }
@@ -41,7 +41,7 @@ class TrieSearch(private val trie: Trie, search: String) {
     private fun recursiveSearch(depth: Int, node: TrieNode, lastWordStartDepth: Int) {
         if (depth >= word.length) {
             if (node.isWord()) {
-                fillCacheWithResult(lastWordStartDepth, node.getWords().first(), null) //TODO do not use first
+                fillCacheWithResult(lastWordStartDepth, node.getWord(), null)
             }
             return
         }
@@ -49,17 +49,17 @@ class TrieSearch(private val trie: Trie, search: String) {
         if (word[depth] == '|' && node.isWord()) {
             if (cache.containsKey(depth + 1)) {
                 if (cache[depth + 1]!!.isNotEmpty()) {
-                    fillCacheWithResult(lastWordStartDepth, node.getWords().first(), depth + 1) //TODO do not use first
+                    fillCacheWithResult(lastWordStartDepth, node.getWord(), depth + 1)
                 }
             } else {
                 recursiveSearch(depth + 1, trie.getRoot(), depth + 1)
                 if (!cache.containsKey(depth + 1) || cache[depth + 1]!!.isEmpty()) {
                     //means no possible solution exists for this path
-                    cache[depth + 1] = mutableListOf()
+                    cache[depth + 1] = mutableSetOf()
                 } else {
                     //means we found values, we want to compress them
                     cleanupCache(depth + 1)
-                    fillCacheWithResult(lastWordStartDepth, node.getWords().first(), depth + 1) //TODO do not use first
+                    fillCacheWithResult(lastWordStartDepth, node.getWord(), depth + 1)
                 }
             }
         }
@@ -72,7 +72,7 @@ class TrieSearch(private val trie: Trie, search: String) {
 
     private fun cleanupCache(depth: Int) {
         val wordList = trie.getWordList()//TODO should not do this -> this is later in the db
-        val cleanedUpCache = mutableListOf<Pair<Int, Int?>>()
+        val cleanedUpCache = mutableSetOf<Pair<Int, Int?>>()
         var min = Integer.MAX_VALUE
         for (cacheEntry in cache[depth]!!) {
             val wordSuffix = word.substring(depth, if (cacheEntry.second == null) word.length else cacheEntry.second!!)
@@ -92,7 +92,7 @@ class TrieSearch(private val trie: Trie, search: String) {
 
     private fun fillCacheWithResult(depth: Int, wordIndex: Int, nextSuffix: Int?) {
         if (!cache.containsKey(depth)) {
-            cache[depth] = mutableListOf()
+            cache[depth] = mutableSetOf()
         }
         cache[depth]!!.add(Pair(wordIndex, nextSuffix))
     }
@@ -144,19 +144,19 @@ class TrieSearch(private val trie: Trie, search: String) {
             .joinToString("|")
     }
 
-    private fun expandResults(): Set<List<Int>> {
+    private fun expandResults(): List<List<Int>> {
         if (!cache.containsKey(0)) {
-            return emptySet()
+            return emptyList()
         }
-        val results = mutableSetOf<List<Int>>()
+        val results = mutableListOf<List<Int>>()
         expandResultsRecursive(cache[0]!!, mutableListOf(), results)
         return results
     }
 
     private fun expandResultsRecursive(
-        currentCacheEntry: MutableList<Pair<Int, Int?>>,
+        currentCacheEntry: MutableSet<Pair<Int, Int?>>,
         currentResult: MutableList<Int>,
-        results: MutableSet<List<Int>>
+        results: MutableList<List<Int>>
     ) {
         for (entry in currentCacheEntry) {
             currentResult.add(entry.first)

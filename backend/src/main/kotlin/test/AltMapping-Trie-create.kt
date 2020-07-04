@@ -48,12 +48,16 @@ fun recursiveSaveTrie(out: OutputStream, char: Char, node: TrieNodeCreate) {
     out.write(node.offset.shr(16))
     out.write(node.offset.shr(8))
     out.write(node.offset)
-    out.write(node.getWords().size)
-    node.getWords().forEach {
-        out.write(it.shr(24))
-        out.write(it.shr(16))
-        out.write(it.shr(8))
-        out.write(it)
+    //TODO we only save the first id, need extra mapping somewhere
+    if (node.getWords().isEmpty()) {
+        out.write(0)
+    } else {
+        out.write(1)
+        val word = node.getWords().first()
+        out.write(word.shr(24))
+        out.write(word.shr(16))
+        out.write(word.shr(8))
+        out.write(word)
     }
     node.getChildren().forEach {
         recursiveSaveTrie(out, it.key, it.value)
@@ -141,7 +145,7 @@ class CreateTrie {
 
     private fun calculateOffsetsRecursive(oldOffset: Int, node: TrieNodeCreate): Int {
         var myOffset = oldOffset + NODE_SIZE
-        myOffset += node.getWords().size * WORD_SIZE
+        myOffset += if (node.getWords().isEmpty()) 0 else WORD_SIZE
         for (child in node.getChildren()) {
             myOffset = calculateOffsetsRecursive(myOffset, child.value)
         }

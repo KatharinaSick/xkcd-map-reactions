@@ -19,7 +19,10 @@ fun main() {
     println("load took: $measureTimeMillis ms")
     measureTimeMillis = measureTimeMillis {
         search(trie!!, "truly sorry to loose a friendship this way")
-        search(trie!!, "truly sorry to loose a friendship this way truly sorry to loose a friendship this way truly sorry to loose a friendship this way")
+        search(
+            trie!!,
+            "truly sorry to loose a friendship this way truly sorry to loose a friendship this way truly sorry to loose a friendship this way"
+        )
         search(trie!!, "hope you fall in a big hole")
     }
     println("search took: $measureTimeMillis ms")
@@ -59,12 +62,8 @@ class TrieNode(private val buffer: ByteBuffer, private val offset: Int) {
         return buffer.get(offset + WORD_COUNT_OFFSET)
     }
 
-    fun getWords(): List<Int> {
-        val words = mutableListOf<Int>()
-        for (i in 0 until readWordCount()) {
-            words.add(buffer.getInt(offset + WORD_START_OFFSET + WORD_SIZE * i))
-        }
-        return words
+    fun getWord(): Int {
+        return buffer.getInt(offset + WORD_START_OFFSET)
     }
 
     fun hasChild(char: Char): Boolean {
