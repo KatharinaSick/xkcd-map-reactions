@@ -1,8 +1,14 @@
 package test
 
+import java.io.BufferedOutputStream
+import java.io.File
+import java.io.FileOutputStream
+import java.io.OutputStream
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.stream.Collectors
+import java.util.zip.GZIPOutputStream
+import java.util.zip.ZipOutputStream
 import kotlin.system.measureTimeMillis
 
 fun main() {
@@ -13,13 +19,46 @@ fun main() {
     }
     println("create took: $measureTimeMillis ms")
     measureTimeMillis = measureTimeMillis {
+        trie!!.calculateOffsets()
+    }
+    println("calculating offset took: $measureTimeMillis ms")
+    measureTimeMillis = measureTimeMillis {
         saveTrie(trie!!)
     }
     println("save took: $measureTimeMillis ms")
 }
 
 fun saveTrie(trie: CreateTrie) {
-    TODO("Not yet implemented")
+    val out =
+        BufferedOutputStream(
+        GZIPOutputStream(
+            FileOutputStream(File("C:\\Users\\mableidinger\\own\\xkcd-map-reactions\\dbMigration\\src\\main\\resources\\US.trie"))))
+
+    trie.getRoot().getChildren().forEach {
+        recursiveSaveTrie(out, it.key, it.value)
+    }
+
+    out.flush()
+    out.close()
+}
+
+fun recursiveSaveTrie(out: OutputStream, char: Char, node: TrieNode) {
+    out.write(char.toInt().shr(8))
+    out.write(char.toInt())
+    out.write(node.offset.shr(24))
+    out.write(node.offset.shr(16))
+    out.write(node.offset.shr(8))
+    out.write(node.offset)
+    out.write(node.getChildren().size)
+    node.getWords().forEach {
+        out.write(it.shr(24))
+        out.write(it.shr(16))
+        out.write(it.shr(8))
+        out.write(it)
+    }
+    node.getChildren().forEach {
+        recursiveSaveTrie(out, it.key, it.value)
+    }
 }
 
 fun prepare(search: String): String {
@@ -58,6 +97,12 @@ fun createTrie(): CreateTrie {
 }
 
 class CreateTrie {
+
+    companion object {
+        val NODE_SIZE = 7
+        val WORD_SIZE = 4
+    }
+
     private lateinit var words: List<String>
     private val root = TrieNode()
 
@@ -90,11 +135,26 @@ class CreateTrie {
     fun getWordList(): List<String> {
         return this.words
     }
+
+    fun calculateOffsets() {
+        println(calculateOffsetsRecursive(0, root))
+    }
+
+    private fun calculateOffsetsRecursive(oldOffset: Int, node: TrieNode): Int {
+        var myOffset = oldOffset + if (node === root) 0 else NODE_SIZE
+        myOffset += node.getWords().size * WORD_SIZE
+        for (child in node.getChildren()) {
+            myOffset = calculateOffsetsRecursive(myOffset, child.value)
+        }
+        node.offset = myOffset
+        return myOffset
+    }
 }
 
 class TrieNode {
     var children: MutableMap<Char, TrieNode>? = null
     private var wordIndex: MutableSet<Int>? = null
+    var offset: Int = 0
 
     fun hasChild(char: Char): Boolean {
         if (children == null) {
@@ -131,14 +191,17 @@ class TrieNode {
     }
 
     fun getWords(): Set<Int> {
+        if (wordIndex == null) {
+            return emptySet()
+        }
         return wordIndex!!
     }
 
-    fun getChildren(): Set<Map.Entry<Char, TrieNode>> {
+    fun getChildren(): List<Map.Entry<Char, TrieNode>> {
         if (children == null) {
-            return emptySet()
+            return emptyList()
         }
-        return children!!.entries
+        return children!!.entries.sortedBy { it.key }
     }
 
 }
