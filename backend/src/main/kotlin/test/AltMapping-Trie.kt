@@ -1,12 +1,11 @@
 package test
 
 import org.apache.commons.text.similarity.LevenshteinDistance
+import persistence.PlaceRepository
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
 import java.nio.ByteBuffer
-import java.nio.file.Files
-import java.nio.file.Paths
 import java.util.zip.GZIPInputStream
 import kotlin.system.measureTimeMillis
 
@@ -17,6 +16,7 @@ fun main() {
         trie = loadTrie()
     }
     println("load took: $measureTimeMillis ms")
+    placeRepository.findAllForIds(setOf(1L)) //fist query needs to create connection or something, takes way longer then subsequent calls
     measureTimeMillis = measureTimeMillis {
         search(trie!!, "truly sorry to loose a friendship this way")
         search(
@@ -30,15 +30,6 @@ fun main() {
 
 class Trie(bytes: ByteArray) {
     private val buffer = ByteBuffer.wrap(bytes)
-    private lateinit var wordList: List<String>
-
-    fun getWordList(): List<String> {
-        return wordList
-    }
-
-    fun setWordList(words: List<String>) {
-        this.wordList = words;
-    }
 
     fun getRoot(): TrieNode {
         return TrieNode(buffer, 0)
@@ -94,37 +85,15 @@ fun loadTrie(): Trie {
                 FileInputStream(File("C:\\Users\\mableidinger\\own\\xkcd-map-reactions\\dbMigration\\src\\main\\resources\\US.trie"))
             )
         )
-    val trie = Trie(input.readAllBytes())
-
-    val words = mutableListOf<String>()
-    var i = 0
-    Files.lines(Paths.get("C:\\Users\\mableidinger\\own\\xkcd-map-reactions\\dbMigration\\src\\main\\resources\\US.txt"))
-        .filter { it.isNotEmpty() }
-        .map {
-            val city = it.split("\t")[1]
-            city to prepare(city)
-        }
-        .filter {
-            it.first.isNotEmpty() && it.second.isNotEmpty()
-        }
-//        .limit(200)
-        .forEach {
-            i++
-            if (i % 10000 == 0) {
-                println("${String.format("%3.0f", i.toFloat() / 2_200_000.toFloat() * 100)}%: ${i}/${2_200_000}")
-            }
-//                println(it)
-            val index = words.size
-            words.add(it.first)
-        }
-    trie.setWordList(words)
-    return trie
+    return Trie(input.readAllBytes())
 }
 
+val placeRepository = PlaceRepository()
 fun search(trie: Trie, search: String) {
     val results = TrieSearch(trie, search).search()
-    val wordList = trie.getWordList()
-    val result = results.map { it.map { wordList[it] }.joinToString(" ") }
+    val allPlaceIds = results.flatten().map { it.toLong() }.toSet()
+    val placeMappings = placeRepository.findAllForIds(allPlaceIds)
+    val result = results.map { it.map { placeMappings[it.toLong()]!!.name }.joinToString(" ") }
     println("size: " + result.size)
     println(result.minBy { LevenshteinDistance().apply(search, it) })
 }

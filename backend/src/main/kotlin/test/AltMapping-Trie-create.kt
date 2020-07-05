@@ -1,11 +1,10 @@
 package test
 
+import persistence.PlaceRepository
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
-import java.nio.file.Files
-import java.nio.file.Paths
 import java.util.stream.Collectors
 import java.util.zip.GZIPOutputStream
 import kotlin.system.measureTimeMillis
@@ -72,17 +71,16 @@ fun prepare(search: String): String {
 }
 
 fun createTrie(): CreateTrie {
-    val words = mutableListOf<String>()
     val trie = CreateTrie()
     var i = 0
-    Files.lines(Paths.get("C:\\Users\\mableidinger\\own\\xkcd-map-reactions\\dbMigration\\src\\main\\resources\\US.txt"))
-        .filter { it.isNotEmpty() }
+    PlaceRepository()
+        .findAll()
+        .filter { it.name.isNotEmpty() }
         .map {
-            val city = it.split("\t")[1]
-            city to prepare(city)
+            it.id.value to prepare(it.name)
         }
         .filter {
-            it.first.isNotEmpty() && it.second.isNotEmpty()
+            it.second.isNotEmpty()
         }
 //        .limit(200)
         .forEach {
@@ -90,12 +88,8 @@ fun createTrie(): CreateTrie {
             if (i % 10000 == 0) {
                 println("${String.format("%3.0f", i.toFloat() / 2_200_000.toFloat() * 100)}%: ${i}/${2_200_000}")
             }
-//                println(it)
-            val index = words.size
-            words.add(it.first)
-            trie.addWord(index, it.second)
+            trie.addWord(it.first.toInt(), it.second)
         }
-    trie.setWordList(words)
     return trie
 }
 
@@ -106,7 +100,6 @@ class CreateTrie {
         val WORD_SIZE = 4
     }
 
-    private lateinit var words: List<String>
     private val root = TrieNodeCreate()
 
     fun getRoot(): TrieNodeCreate {
@@ -129,14 +122,6 @@ class CreateTrie {
         } else {
             child.addWord(index)
         }
-    }
-
-    fun setWordList(words: List<String>) {
-        this.words = words;
-    }
-
-    fun getWordList(): List<String> {
-        return this.words
     }
 
     fun calculateOffsets() {
