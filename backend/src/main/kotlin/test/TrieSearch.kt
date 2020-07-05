@@ -1,7 +1,6 @@
 package test
 
 import org.apache.commons.text.similarity.LevenshteinDistance
-import java.lang.StringBuilder
 import java.util.*
 import java.util.stream.Collectors
 
@@ -115,7 +114,16 @@ class TrieSearch(private val trie: Trie, search: String) {
         }
 
         var fuzzyNextStrings = FUZZY_GROUPS
-            .filter { it.intersect(nextChars).isNotEmpty() }
+            .filter {
+                var result = false
+                for (nextChar in nextChars) {
+                    if (it.contains(nextChar)) {
+                        result = true
+                        break
+                    }
+                }
+                result
+            }
             .flatten()
             .toSet()
 
