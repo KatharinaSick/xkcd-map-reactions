@@ -1,6 +1,8 @@
 package test
 
 import org.apache.commons.text.similarity.LevenshteinDistance
+import java.lang.StringBuilder
+import java.util.*
 import java.util.stream.Collectors
 
 class TrieSearch(private val trie: Trie, search: String) {
@@ -31,10 +33,13 @@ class TrieSearch(private val trie: Trie, search: String) {
     }
 
     private val word = prepare(search)
-    private val cache = mutableMapOf<Int, MutableSet<Pair<Int, Int?>>>()
+    private val cache = mutableMapOf<Int, MutableSet<Triple<Int, Int?, String>>>()
+    private val currentTriePaths: Deque<StringBuilder> = LinkedList()
 
     fun search(): List<List<Int>> {
+        currentTriePaths.push(StringBuilder())
         recursiveSearch(0, trie.getRoot(), 0)
+        currentTriePaths.pop()
         return expandResults()
     }
 
@@ -52,7 +57,9 @@ class TrieSearch(private val trie: Trie, search: String) {
                     fillCacheWithResult(lastWordStartDepth, node.getWord(), depth + 1)
                 }
             } else {
+                currentTriePaths.push(StringBuilder())
                 recursiveSearch(depth + 1, trie.getRoot(), depth + 1)
+                currentTriePaths.pop()
                 if (!cache.containsKey(depth + 1) || cache[depth + 1]!!.isEmpty()) {
                     //means no possible solution exists for this path
                     cache[depth + 1] = mutableSetOf()
@@ -66,18 +73,20 @@ class TrieSearch(private val trie: Trie, search: String) {
         val depthForNextNode = if (word[depth] == '|') depth + 1 else depth
         val nextNodes = collectNextNodes(depthForNextNode, node)
         for (nextNode in nextNodes) {
+            val currentTriePath = currentTriePaths.peek()
+            currentTriePath.append(nextNode.third)
             recursiveSearch(nextNode.first, nextNode.second, lastWordStartDepth)
+            currentTriePath.setLength(currentTriePath.length - nextNode.third.length)
         }
     }
 
     private fun cleanupCache(depth: Int) {
-        val wordList = trie.getWordList()//TODO should not do this -> this is later in the db
-        val cleanedUpCache = mutableSetOf<Pair<Int, Int?>>()
+        val cleanedUpCache = mutableSetOf<Triple<Int, Int?, String>>()
         var min = Integer.MAX_VALUE
         for (cacheEntry in cache[depth]!!) {
             val wordSuffix = word.substring(depth, if (cacheEntry.second == null) word.length else cacheEntry.second!!)
                 .filter { it != '|' }
-            val cacheWord = prepare(wordList[cacheEntry.first]).filter { it != '|' }
+            val cacheWord = cacheEntry.third
             val currentDistance = LEVENSHTEIN_DISTANCE.apply(wordSuffix, cacheWord)
             if (currentDistance < min) {
                 cleanedUpCache.clear()
@@ -94,10 +103,10 @@ class TrieSearch(private val trie: Trie, search: String) {
         if (!cache.containsKey(depth)) {
             cache[depth] = mutableSetOf()
         }
-        cache[depth]!!.add(Pair(wordIndex, nextSuffix))
+        cache[depth]!!.add(Triple(wordIndex, nextSuffix, currentTriePaths.peek().toString()))
     }
 
-    private fun collectNextNodes(depth: Int, node: TrieNode): List<Pair<Int, TrieNode>> {
+    private fun collectNextNodes(depth: Int, node: TrieNode): List<Triple<Int, TrieNode, String>> {
         val nextChars = mutableSetOf<String>()
         if (depth + 1 <= word.length) nextChars.add(word.substring(depth, depth + 1))
         if (depth + 2 <= word.length) nextChars.add(word.substring(depth, depth + 2))
@@ -115,7 +124,7 @@ class TrieSearch(private val trie: Trie, search: String) {
             fuzzyNextStrings = setOf(nextChar, nextChar + nextChar)
         }
 
-        val nextNodes = mutableListOf<Pair<Int, TrieNode>>()
+        val nextNodes = mutableListOf<Triple<Int, TrieNode, String>>()
         for (fuzzyNextString in fuzzyNextStrings) {
             var valid = true
             var currentNode = node
@@ -128,8 +137,8 @@ class TrieSearch(private val trie: Trie, search: String) {
                 }
             }
             if (valid) {
-                nextNodes.add(Pair(depth + 1, currentNode))
-                nextNodes.add(Pair(depth + 2, currentNode))
+                nextNodes.add(Triple(depth + 1, currentNode, fuzzyNextString))
+                nextNodes.add(Triple(depth + 2, currentNode, fuzzyNextString))
             }
         }
         return nextNodes
@@ -154,7 +163,7 @@ class TrieSearch(private val trie: Trie, search: String) {
     }
 
     private fun expandResultsRecursive(
-        currentCacheEntry: MutableSet<Pair<Int, Int?>>,
+        currentCacheEntry: MutableSet<Triple<Int, Int?, String>>,
         currentResult: MutableList<Int>,
         results: MutableList<List<Int>>
     ) {
