@@ -1,7 +1,6 @@
 package test
 
 import org.apache.commons.text.similarity.LevenshteinDistance
-import java.util.*
 import java.util.stream.Collectors
 
 class TrieSearch(private val trie: Trie, search: String) {
@@ -33,47 +32,41 @@ class TrieSearch(private val trie: Trie, search: String) {
 
     private val word = prepare(search)
     private val cache = mutableMapOf<Int, MutableSet<Triple<Int, Int?, String>>>()
-    private val currentTriePaths: Deque<StringBuilder> = LinkedList()
+    private val currentTriePath = StringBuilder()
+    private val depthsToCompute = mutableSetOf(0)
 
     fun search(): List<List<Int>> {
-        currentTriePaths.push(StringBuilder())
-        recursiveSearch(0, trie.getRoot(), 0)
-        currentTriePaths.pop()
+        while (depthsToCompute.isNotEmpty()) {
+            val depth = depthsToCompute.first()
+            depthsToCompute.remove(depth)
+            val results = mutableSetOf<Triple<Int, Int?, String>>()
+            recursiveSearch(depth, trie.getRoot(), results)
+            cache[depth] = results
+        }
         cleanupCaches()
         return expandResults()
     }
 
-    private fun recursiveSearch(depth: Int, node: TrieNode, lastWordStartDepth: Int) {
+    private fun recursiveSearch(depth: Int, node: TrieNode, results: MutableSet<Triple<Int, Int?, String>>) {
         if (depth >= word.length) {
             if (node.isWord()) {
-                fillCacheWithResult(lastWordStartDepth, node.getWord(), null)
+                results.add(Triple(node.getWord(), null, currentTriePath.toString()))
             }
             return
         }
         //word end means we use this city, otherwise we continue until we find a valid city (=merge multiple words)
+        //TODO implement not only on word splitting too
         if (word[depth] == '|' && node.isWord()) {
-            if (cache.containsKey(depth + 1)) {
-                if (cache[depth + 1]!!.isNotEmpty()) {
-                    fillCacheWithResult(lastWordStartDepth, node.getWord(), depth + 1)
-                }
-            } else {
-                currentTriePaths.push(StringBuilder())
-                recursiveSearch(depth + 1, trie.getRoot(), depth + 1)
-                currentTriePaths.pop()
-                if (!cache.containsKey(depth + 1) || cache[depth + 1]!!.isEmpty()) {
-                    //means no possible solution exists for this path
-                    cache[depth + 1] = mutableSetOf()
-                } else {
-                    fillCacheWithResult(lastWordStartDepth, node.getWord(), depth + 1)
-                }
+            results.add(Triple(node.getWord(), depth + 1, currentTriePath.toString()))
+            if (!cache.containsKey(depth + 1)) {
+                depthsToCompute.add(depth + 1)
             }
         }
         val depthForNextNode = if (word[depth] == '|') depth + 1 else depth
         val nextNodes = collectNextNodes(depthForNextNode, node)
         for (nextNode in nextNodes) {
-            val currentTriePath = currentTriePaths.peek()
             currentTriePath.append(nextNode.third)
-            recursiveSearch(nextNode.first, nextNode.second, lastWordStartDepth)
+            recursiveSearch(nextNode.first, nextNode.second, results)
             currentTriePath.setLength(currentTriePath.length - nextNode.third.length)
         }
     }
@@ -100,13 +93,6 @@ class TrieSearch(private val trie: Trie, search: String) {
                 .map { it.first }.toMutableSet()
             cache[cacheEntry.key] = cleanedUpCache
         }
-    }
-
-    private fun fillCacheWithResult(depth: Int, wordIndex: Int, nextSuffix: Int?) {
-        if (!cache.containsKey(depth)) {
-            cache[depth] = mutableSetOf()
-        }
-        cache[depth]!!.add(Triple(wordIndex, nextSuffix, currentTriePaths.peek().toString()))
     }
 
     private fun collectNextNodes(depth: Int, node: TrieNode): List<Triple<Int, TrieNode, String>> {
