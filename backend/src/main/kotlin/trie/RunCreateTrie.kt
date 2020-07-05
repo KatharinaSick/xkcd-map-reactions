@@ -1,4 +1,4 @@
-package test
+package trie
 
 import persistence.PlaceRepository
 import java.io.BufferedOutputStream
@@ -8,6 +8,8 @@ import java.io.OutputStream
 import java.util.stream.Collectors
 import java.util.zip.GZIPOutputStream
 import kotlin.system.measureTimeMillis
+
+val OUTPUT_PATH = ".\\backend\\src\\main\\resources\\US.trie"
 
 fun main() {
     var trie: CreateTrie? = null
@@ -30,7 +32,7 @@ fun saveTrie(trie: CreateTrie) {
     val out =
         BufferedOutputStream(
             GZIPOutputStream(
-                FileOutputStream(File("C:\\Users\\mableidinger\\own\\xkcd-map-reactions\\dbMigration\\src\\main\\resources\\US.trie"))
+                FileOutputStream(File(OUTPUT_PATH))
             )
         )
 

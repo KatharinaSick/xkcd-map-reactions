@@ -28,7 +28,7 @@ internal class RouteServiceTest {
     var routeService = RouteService()
 
 
-    private val testWord = "test"
+    private val testWord = "trie"
     private val beiderMorseTestCodes = BeiderMorseEncoder().encode(testWord).split("\\|")
     private val nysiisTestCode = Nysiis().encode(testWord)
     private val soundexTestCode = Soundex().encode(testWord)

@@ -1,4 +1,4 @@
-package test
+package trie
 
 import org.apache.commons.text.similarity.LevenshteinDistance
 
