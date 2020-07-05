@@ -1,9 +1,8 @@
 package test
 
 import org.apache.commons.text.similarity.LevenshteinDistance
-import java.util.stream.Collectors
 
-class TrieSearch(private val trie: Trie, search: String) {
+class TrieSearch(private val trie: Trie, search: String, private val splitWords: Boolean = false) {
     companion object {
         val LEVENSHTEIN_DISTANCE = LevenshteinDistance()
         val FUZZY_GROUPS = listOf(
@@ -30,7 +29,9 @@ class TrieSearch(private val trie: Trie, search: String) {
         }
     }
 
+    private val wordBeginnings = mutableSetOf<Int>()
     private val word = prepare(search)
+
     private val cache = mutableMapOf<Int, MutableSet<Triple<Int, Int?, String>>>()
     private val currentTriePath = StringBuilder()
 
@@ -61,12 +62,10 @@ class TrieSearch(private val trie: Trie, search: String) {
             }
             return
         }
-        //TODO implement not only on word splitting too
-        if (word[depth] == '|' && node.isWord()) {
-            results.add(Triple(node.getWord(), depth + 1, currentTriePath.toString()))
+        if (isAcceptableWordSplit(depth) && node.isWord()) {
+            results.add(Triple(node.getWord(), depth, currentTriePath.toString()))
         }
-        val depthForNextNode = if (word[depth] == '|') depth + 1 else depth
-        val nextNodes = collectNextNodes(depthForNextNode, node)
+        val nextNodes = collectNextNodes(depth, node)
         for (nextNode in nextNodes) {
             currentTriePath.append(nextNode.third)
             recursiveSearch(nextNode.first, nextNode.second, results)
@@ -74,8 +73,13 @@ class TrieSearch(private val trie: Trie, search: String) {
         }
     }
 
+    private fun isAcceptableWordSplit(depth: Int): Boolean {
+        return splitWords || wordBeginnings.contains(depth)
+    }
+
     private fun cleanupCaches() {
         //TODO maybe we can think of something smarter then this?
+        //TOOD also maybe we find a generic way to limit result size? split words mode makes this way too huge
         for (cacheEntry in cache) {
             if (cacheEntry.value.isEmpty()) {
                 continue
@@ -92,7 +96,7 @@ class TrieSearch(private val trie: Trie, search: String) {
             }
             val min = distances.minBy { it.second }!!.second
             val cleanedUpCache = distances
-                .filter { it.second < min + 0.25 }
+                .filter { it.second <= min + 0.25 }
                 .map { it.first }.toMutableSet()
             cache[cacheEntry.key] = cleanedUpCache
         }
@@ -146,12 +150,21 @@ class TrieSearch(private val trie: Trie, search: String) {
     }
 
     private fun prepare(search: String): String {
-        return search
-            .filter { it.isLetter() || it.isWhitespace() }
-            .map { it.toLowerCase().toString() }
-            .stream().collect(Collectors.joining())
-            .split("\\s+".toRegex())
-            .joinToString("|")
+        val word = StringBuilder()
+        var i = 0
+        var lastChar: Char? = null
+        for (char in search) {
+            if (char.isLetter()) {//TODO numbers and stuff?
+                word.append(char)
+                i++
+            } else {
+                if (char.isWhitespace() && !(lastChar == null || lastChar.isWhitespace())) {
+                    wordBeginnings.add(i)
+                }
+            }
+            lastChar = char
+        }
+        return word.toString()
     }
 
     private fun expandResults(): List<List<Int>> {
