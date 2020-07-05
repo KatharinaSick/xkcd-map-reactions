@@ -33,15 +33,22 @@ class TrieSearch(private val trie: Trie, search: String) {
     private val word = prepare(search)
     private val cache = mutableMapOf<Int, MutableSet<Triple<Int, Int?, String>>>()
     private val currentTriePath = StringBuilder()
-    private val depthsToCompute = mutableSetOf(0)
 
     fun search(): List<List<Int>> {
+        val depthsToCompute = mutableSetOf(0)
         while (depthsToCompute.isNotEmpty()) {
             val depth = depthsToCompute.first()
             depthsToCompute.remove(depth)
+
             val results = mutableSetOf<Triple<Int, Int?, String>>()
             recursiveSearch(depth, trie.getRoot(), results)
             cache[depth] = results
+
+            results.forEach {
+                if (it.second != null && !cache.containsKey(it.second!!)) {
+                    depthsToCompute.add(it.second!!)
+                }
+            }
         }
         cleanupCaches()
         return expandResults()
@@ -54,13 +61,9 @@ class TrieSearch(private val trie: Trie, search: String) {
             }
             return
         }
-        //word end means we use this city, otherwise we continue until we find a valid city (=merge multiple words)
         //TODO implement not only on word splitting too
         if (word[depth] == '|' && node.isWord()) {
             results.add(Triple(node.getWord(), depth + 1, currentTriePath.toString()))
-            if (!cache.containsKey(depth + 1)) {
-                depthsToCompute.add(depth + 1)
-            }
         }
         val depthForNextNode = if (word[depth] == '|') depth + 1 else depth
         val nextNodes = collectNextNodes(depthForNextNode, node)
