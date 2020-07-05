@@ -39,6 +39,7 @@ class TrieSearch(private val trie: Trie, search: String) {
         currentTriePaths.push(StringBuilder())
         recursiveSearch(0, trie.getRoot(), 0)
         currentTriePaths.pop()
+        cleanupCaches()
         return expandResults()
     }
 
@@ -63,8 +64,6 @@ class TrieSearch(private val trie: Trie, search: String) {
                     //means no possible solution exists for this path
                     cache[depth + 1] = mutableSetOf()
                 } else {
-                    //means we found values, we want to compress them
-                    cleanupCache(depth + 1)
                     fillCacheWithResult(lastWordStartDepth, node.getWord(), depth + 1)
                 }
             }
@@ -79,23 +78,28 @@ class TrieSearch(private val trie: Trie, search: String) {
         }
     }
 
-    private fun cleanupCache(depth: Int) {
-        val cleanedUpCache = mutableSetOf<Triple<Int, Int?, String>>()
-        var min = Integer.MAX_VALUE
-        for (cacheEntry in cache[depth]!!) {
-            val wordSuffix = word.substring(depth, if (cacheEntry.second == null) word.length else cacheEntry.second!!)
-                .filter { it != '|' }
-            val cacheWord = cacheEntry.third
-            val currentDistance = LEVENSHTEIN_DISTANCE.apply(wordSuffix, cacheWord)
-            if (currentDistance < min) {
-                cleanedUpCache.clear()
-                min = currentDistance
+    private fun cleanupCaches() {
+        //TODO maybe we can think of something smarter then this?
+        for (cacheEntry in cache) {
+            if (cacheEntry.value.isEmpty()) {
+                continue
             }
-            if (currentDistance == min) {
-                cleanedUpCache.add(cacheEntry)
+            val distances = cacheEntry.value.map { cacheValue ->
+                val wordSuffix = word
+                    .substring(
+                        cacheEntry.key, if (cacheValue.second == null) word.length else cacheValue.second!!
+                    )
+                    .filter { it != '|' }
+                val cacheWord = cacheValue.third
+                cacheValue to LEVENSHTEIN_DISTANCE.apply(wordSuffix, cacheWord)
+                    .toDouble() / wordSuffix.length.toDouble()
             }
+            val min = distances.minBy { it.second }!!.second
+            val cleanedUpCache = distances
+                .filter { it.second < min + 0.25 }
+                .map { it.first }.toMutableSet()
+            cache[cacheEntry.key] = cleanedUpCache
         }
-        cache[depth] = cleanedUpCache
     }
 
     private fun fillCacheWithResult(depth: Int, wordIndex: Int, nextSuffix: Int?) {

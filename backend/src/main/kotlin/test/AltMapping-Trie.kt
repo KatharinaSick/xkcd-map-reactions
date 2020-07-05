@@ -24,6 +24,7 @@ fun main() {
             "truly sorry to loose a friendship this way truly sorry to loose a friendship this way truly sorry to loose a friendship this way"
         )
         search(trie!!, "hope you fall in a big hole")
+        search(trie!!, "today is a nice day and i don't have to do anything")
     }
     println("search took: $measureTimeMillis ms")
 }

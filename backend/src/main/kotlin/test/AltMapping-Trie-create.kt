@@ -65,7 +65,7 @@ fun recursiveSaveTrie(out: OutputStream, char: Char, node: TrieNodeCreate) {
 
 fun prepare(search: String): String {
     return search
-        .filter { it.isLetter() }
+        .filter { it.isLetter() } //TODO numbers and stuff?
         .map { it.toLowerCase().toString() }
         .stream().collect(Collectors.joining())
 }
