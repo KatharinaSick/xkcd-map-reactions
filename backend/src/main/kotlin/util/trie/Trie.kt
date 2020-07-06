@@ -1,4 +1,4 @@
-package trie
+package util.trie
 
 import java.nio.ByteBuffer
 

@@ -1,4 +1,4 @@
-package trie
+package util.trie
 
 import org.apache.commons.text.similarity.LevenshteinDistance
 
@@ -32,7 +32,7 @@ class TrieSearch(private val trie: Trie, search: String, private val splitWords:
     private val wordBeginnings = mutableSetOf<Int>()
     private val word = prepare(search)
 
-    private val cache = mutableMapOf<Int, MutableSet<Triple<Int, Int?, String>>>()
+    private val cache = mutableMapOf<Int, MutableSet<TrieCacheEntry>>()
     private val currentTriePath = StringBuilder()
 
     fun search(): List<List<Int>> {
@@ -41,13 +41,13 @@ class TrieSearch(private val trie: Trie, search: String, private val splitWords:
             val depth = depthsToCompute.first()
             depthsToCompute.remove(depth)
 
-            val results = mutableSetOf<Triple<Int, Int?, String>>()
+            val results = mutableSetOf<TrieCacheEntry>()
             recursiveSearch(depth, trie.getRoot(), results)
             cache[depth] = results
 
             results.forEach {
-                if (it.second != null && !cache.containsKey(it.second!!)) {
-                    depthsToCompute.add(it.second!!)
+                if (it.suffix != null && !cache.containsKey(it.suffix)) {
+                    depthsToCompute.add(it.suffix)
                 }
             }
         }
@@ -55,15 +55,15 @@ class TrieSearch(private val trie: Trie, search: String, private val splitWords:
         return expandResults()
     }
 
-    private fun recursiveSearch(depth: Int, node: TrieNode, results: MutableSet<Triple<Int, Int?, String>>) {
+    private fun recursiveSearch(depth: Int, node: TrieNode, results: MutableSet<TrieCacheEntry>) {
         if (depth >= word.length) {
             if (node.isWord()) {
-                results.add(Triple(node.getWord(), null, currentTriePath.toString()))
+                results.add(TrieCacheEntry(node.getWord(), null, currentTriePath.toString()))
             }
             return
         }
         if (isAcceptableWordSplit(depth) && node.isWord()) {
-            results.add(Triple(node.getWord(), depth, currentTriePath.toString()))
+            results.add(TrieCacheEntry(node.getWord(), depth, currentTriePath.toString()))
         }
         val nextNodes = collectNextNodes(depth, node)
         for (nextNode in nextNodes) {
@@ -87,10 +87,10 @@ class TrieSearch(private val trie: Trie, search: String, private val splitWords:
             val distances = cacheEntry.value.map { cacheValue ->
                 val wordSuffix = word
                     .substring(
-                        cacheEntry.key, if (cacheValue.second == null) word.length else cacheValue.second!!
+                        cacheEntry.key, cacheValue.suffix ?: word.length
                     )
                     .filter { it != '|' }
-                val cacheWord = cacheValue.third
+                val cacheWord = cacheValue.matchedWordInTrie
                 cacheValue to LEVENSHTEIN_DISTANCE.apply(wordSuffix, cacheWord)
                     .toDouble() / wordSuffix.length.toDouble()
             }
@@ -177,14 +177,14 @@ class TrieSearch(private val trie: Trie, search: String, private val splitWords:
     }
 
     private fun expandResultsRecursive(
-        currentCacheEntry: MutableSet<Triple<Int, Int?, String>>,
+        currentCacheEntry: MutableSet<TrieCacheEntry>,
         currentResult: MutableList<Int>,
         results: MutableList<List<Int>>
     ) {
         for (entry in currentCacheEntry) {
-            currentResult.add(entry.first)
-            if (entry.second != null) {
-                expandResultsRecursive(cache[entry.second!!]!!, currentResult, results)
+            currentResult.add(entry.wordId)
+            if (entry.suffix != null) {
+                expandResultsRecursive(cache[entry.suffix]!!, currentResult, results)
             } else {
                 results.add(currentResult.toList())
             }

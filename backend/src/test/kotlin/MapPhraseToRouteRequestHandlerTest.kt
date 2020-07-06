@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import service.PhraseService
 import service.RouteService
 import java.net.HttpURLConnection
 
@@ -22,49 +21,32 @@ internal class MapPhraseToRouteRequestHandlerTest {
     lateinit var routeService: RouteService
 
     @MockK
-    lateinit var phraseService: PhraseService
-
-    @MockK
     lateinit var apiGatewayProxyRequestEvent: APIGatewayProxyRequestEvent
 
     @OverrideMockKs
     var mapPhraseToRouteRequestHandler = MapPhraseToRouteRequestHandler()
 
     private val validPhrase = "Truly sorry to loose a friend this way"
-    private val validPhraseAsWordList = listOf("Truly", "sorry", "to", "loose", "a", "friend", "this", "way")
-
     private val emptyResultPhrase = "Empty result"
-    private val emptyResultPhraseAsWordList = listOf("Empty", "result")
-
     private val badRequestPhrase = "bad request"
-    private val badRequestPhraseAsWordList = listOf("bad", "request")
-
     private val notFoundPhrase = "not found"
-    private val notFoundPhraseAsWordList = listOf("not", "found")
-
     private val internalErrorPhrase = "internal error"
-    private val internalErrorPhraseAsWordList = listOf("internal", "error")
 
     @BeforeEach
     fun setUp() {
-        every { phraseService.splitPhraseToWords(validPhrase) } returns validPhraseAsWordList
-        every { routeService.mapPhraseToRoute(validPhraseAsWordList) } returns listOf(
+        every { routeService.mapPhraseToRoute(validPhrase) } returns listOf(
             Place("place 1", 1.0, 2.0),
             Place("place 2", 1.0, 2.0),
             Place("place 3", 1.0, 2.0)
         )
 
-        every { phraseService.splitPhraseToWords(emptyResultPhrase) } returns emptyResultPhraseAsWordList
-        every { routeService.mapPhraseToRoute(emptyResultPhraseAsWordList) } returns listOf()
+        every { routeService.mapPhraseToRoute(emptyResultPhrase) } throws NotFoundException(emptyResultPhrase)
 
-        every { phraseService.splitPhraseToWords(badRequestPhrase) } returns badRequestPhraseAsWordList
-        every { routeService.mapPhraseToRoute(badRequestPhraseAsWordList) } throws BadRequestException(badRequestPhrase)
+        every { routeService.mapPhraseToRoute(badRequestPhrase) } throws BadRequestException(badRequestPhrase)
 
-        every { phraseService.splitPhraseToWords(notFoundPhrase) } returns notFoundPhraseAsWordList
-        every { routeService.mapPhraseToRoute(notFoundPhraseAsWordList) } throws NotFoundException(notFoundPhrase)
+        every { routeService.mapPhraseToRoute(notFoundPhrase) } throws NotFoundException(notFoundPhrase)
 
-        every { phraseService.splitPhraseToWords(internalErrorPhrase) } returns internalErrorPhraseAsWordList
-        every { routeService.mapPhraseToRoute(internalErrorPhraseAsWordList) } throws IndexOutOfBoundsException()
+        every { routeService.mapPhraseToRoute(internalErrorPhrase) } throws IndexOutOfBoundsException()
     }
 
     @Test

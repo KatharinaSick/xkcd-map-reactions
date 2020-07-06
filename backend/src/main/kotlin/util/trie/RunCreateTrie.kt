@@ -1,4 +1,4 @@
-package trie
+package util.trie
 
 import persistence.PlaceRepository
 import java.io.BufferedOutputStream
@@ -11,6 +11,10 @@ import kotlin.system.measureTimeMillis
 
 val OUTPUT_PATH = ".\\backend\\src\\main\\resources\\US.trie"
 
+/**
+ * Creates the US.trie file in the resources folder, which is necessary to map phrases to routes. This file is not
+ * added to git, therefore it needs to be generated before running the project for the first time.
+ */
 fun main() {
     var trie: CreateTrie? = null
     var measureTimeMillis: Long

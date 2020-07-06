@@ -4,8 +4,8 @@ import exception.HttpException
 import model.Place
 import org.apache.commons.text.similarity.LevenshteinDistance
 import persistence.PlaceRepository
-import trie.Trie
-import trie.TrieSearch
+import util.trie.Trie
+import util.trie.TrieSearch
 import java.io.BufferedInputStream
 import java.util.zip.GZIPInputStream
 
@@ -28,7 +28,7 @@ class TrieSearchService {
         return translatedResults.minBy {
             LevenshteinDistance().apply(
                 search,
-                it.map { it.name.toLowerCase() }.joinToString(" ")
+                it.joinToString(" ") { it.name.toLowerCase() }
             )
         }
     }
