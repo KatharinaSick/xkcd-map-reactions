@@ -14,6 +14,8 @@ To run the function locally [AWS SAM](https://docs.aws.amazon.com/serverless-app
 * DB_USER
 * DB_PASSWORD
 
+Before running the function for the first time it is necessary to generate the `US.trie` file. This can be achieved by executing `util.trie.RunCreateTrie.kt`.
+
 ## dbMigration
 This part of the project can be used to set up the database. It is a Java project that is using the [Flyway Maven Plugin](https://flywaydb.org/getstarted/firststeps/maven) to create database migrations. There are several steps you need to complete, to get it running:
 

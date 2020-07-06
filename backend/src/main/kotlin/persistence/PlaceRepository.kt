@@ -1,17 +1,11 @@
 package persistence
 
 import model.Place
+import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.lowerCase
 import org.jetbrains.exposed.sql.transactions.transaction
-import persistence.dao.BeiderMorseEncodedPlaceDao
-import persistence.dao.BeiderMorseEncodedPlaces
-import persistence.dao.NysiisEncodedPlaceDao
-import persistence.dao.NysiisEncodedPlaces
-import persistence.dao.PlaceDao
-import persistence.dao.Places
-import persistence.dao.SoundexEncodedPlaceDao
-import persistence.dao.SoundexEncodedPlaces
+import persistence.dao.*
 
 class PlaceRepository {
 
@@ -19,7 +13,8 @@ class PlaceRepository {
         Database.connect(
             "jdbc:postgresql://${System.getenv("DB_URL")}/${System.getenv("DB_NAME")}",
             driver = "org.postgresql.Driver",
-            user = System.getenv("DB_USER") ?: "", // necessary for testing, as MockK is always calling the init block when an object is mocked
+            user = System.getenv("DB_USER")
+                ?: "", // necessary for testing, as MockK is always calling the init block when an object is mocked
             password = System.getenv("DB_PASSWORD") ?: ""
         )
     }
@@ -57,6 +52,33 @@ class PlaceRepository {
                     .map { it.place.toModel() }
             } catch (e: IllegalArgumentException) {
                 ArrayList()
+            }
+        }
+    }
+
+    fun findAllForIds(allPlaceIds: Set<Long>): Map<Long, Place> {
+        return transaction {
+            try {
+                PlaceDao
+                    .find {
+                        Places.id inList allPlaceIds.map { EntityID(it, Places) }
+                    }
+                    .map { it.id.value to it.toModel() }
+                    .toMap()
+            } catch (e: IllegalArgumentException) {
+                emptyMap()
+            }
+        }
+    }
+
+    fun findAll(): List<PlaceDao> {
+        return transaction {
+            try {
+                PlaceDao
+                    .all()
+                    .toList()
+            } catch (e: IllegalArgumentException) {
+                emptyList()
             }
         }
     }
