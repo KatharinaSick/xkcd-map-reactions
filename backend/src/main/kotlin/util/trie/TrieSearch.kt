@@ -88,23 +88,21 @@ class TrieSearch(
             return emptyList()
         }
 
-        var fuzzyNextStrings = FUZZY_GROUPS
-            .filter {
-                var result = false
-                for (nextChar in nextChars) {
-                    if (it.contains(nextChar)) {
-                        result = true
-                        break
-                    }
+
+        val fuzzyNextStrings = mutableSetOf<String>()
+        FUZZY_GROUPS.forEach {
+            for (nextChar in nextChars) {
+                if (it.contains(nextChar)) {
+                    fuzzyNextStrings.addAll(it)
+                    break
                 }
-                result
             }
-            .flatten()
-            .toSet()
+        }
 
         if (fuzzyNextStrings.isEmpty()) {
             val nextChar = word.substring(depth, depth + 1)
-            fuzzyNextStrings = setOf(nextChar, nextChar + nextChar)
+            fuzzyNextStrings.add(nextChar)
+            fuzzyNextStrings.add(nextChar + nextChar)
         }
 
         val nextNodes = mutableListOf<Triple<Int, TrieNode, String>>()
@@ -112,8 +110,9 @@ class TrieSearch(
             var valid = true
             var currentNode = node
             for (char in fuzzyNextString) {
-                if (currentNode.hasChild(char)) {
-                    currentNode = currentNode.getChild(char)
+                val child = currentNode.getChild(char)
+                if (child != null) {
+                    currentNode = child
                 } else {
                     valid = false
                     break
