@@ -25,9 +25,10 @@ class TrieSearchService {
 
         val translatedResults = results.map { it.map { placeMappings[it.toLong()]!! } }
 
+        val lowerCaseSearch = search.toLowerCase()
         return translatedResults.minBy {
             LevenshteinDistance().apply(
-                search,
+                lowerCaseSearch,
                 it.joinToString(" ") { it.name.toLowerCase() }
             )
         }
