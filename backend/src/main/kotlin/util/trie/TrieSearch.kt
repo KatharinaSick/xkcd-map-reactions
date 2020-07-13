@@ -178,6 +178,14 @@ class TrieSearch(
                     listOf(Pair(0, emptyList()))
                 }
             }
+        val childrenDistances =
+            Array(children.size) { i ->
+                val phraseMatched = word
+                    .substring(
+                        depth, children[i].suffix ?: word.length
+                    )
+                LEVENSHTEIN_DISTANCE.apply(phraseMatched, children[i].matchedWordInTrie)
+            }
 
         val collectedForThisNode = mutableListOf<Pair<Int, List<Int>>>()
         while (collectedForThisNode.size < maxResultSize) {
@@ -188,15 +196,10 @@ class TrieSearch(
                 if (childrenSuffixIndex[i] >= suffixes[i].size) {
                     continue
                 } else {
-                    val phraseMatched = word
-                        .substring(
-                            depth, child.suffix ?: word.length
-                        )
-                    val levenshteinDistance = LEVENSHTEIN_DISTANCE.apply(phraseMatched, child.matchedWordInTrie)
                     val distance = if (child.suffix == null) {
-                        levenshteinDistance
+                        childrenDistances[i]
                     } else {
-                        levenshteinDistance + suffixes[i][childrenSuffixIndex[i]].first
+                        childrenDistances[i] + suffixes[i][childrenSuffixIndex[i]].first
                     }
                     if (min == null || distance < min) {
                         min = distance

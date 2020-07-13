@@ -2,7 +2,6 @@ package service
 
 import exception.HttpException
 import model.Place
-import org.apache.commons.text.similarity.LevenshteinDistance
 import persistence.PlaceRepository
 import util.trie.Trie
 import util.trie.TrieSearch
@@ -19,21 +18,13 @@ class TrieSearchService {
         if (results.isEmpty()) {
             return null
         }
+        val bestResult = results[0] //TODO if we want route matching don't ignore the other 99
 
-        val allPlaceIds = results.flatten().map { it.toLong() }.toSet()
+        val allPlaceIds = bestResult.map { it.toLong() }.toSet()
         val placeMappings = placeRepository.findAllForIds(allPlaceIds)
 
-        val translatedResults = results.map { it.map { placeMappings[it.toLong()]!! } }
-
-        val lowerCaseSearch = search.toLowerCase()
-        return translatedResults.minBy {
-            LevenshteinDistance().apply(
-                lowerCaseSearch,
-                it.joinToString(" ") { it.name.toLowerCase() }
-            )
-        }
+        return bestResult.map { placeMappings[it.toLong()]!! }
     }
-
 
     private fun loadTrie(): Trie {
         val input =
