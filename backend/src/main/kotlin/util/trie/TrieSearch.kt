@@ -2,7 +2,11 @@ package util.trie
 
 import org.apache.commons.text.similarity.LevenshteinDistance
 
-class TrieSearch(private val trie: Trie, search: String, private val splitWords: Boolean = false) {
+class TrieSearch(
+    private val trie: Trie, search: String,
+    private val splitWords: Boolean = false,
+    private val maxResultSize: Int = 100
+) {
     companion object {
         val LEVENSHTEIN_DISTANCE = LevenshteinDistance()
         val FUZZY_GROUPS = listOf(
@@ -51,8 +55,7 @@ class TrieSearch(private val trie: Trie, search: String, private val splitWords:
                 }
             }
         }
-        cleanupCaches()
-        return expandResults()
+        return collectResults()
     }
 
     private fun recursiveSearch(depth: Int, node: TrieNode, results: MutableSet<TrieCacheEntry>) {
@@ -77,31 +80,6 @@ class TrieSearch(private val trie: Trie, search: String, private val splitWords:
         return splitWords || wordBeginnings.contains(depth)
     }
 
-    private fun cleanupCaches() {
-        //TODO maybe we can think of something smarter then this?
-        //TOOD also maybe we find a generic way to limit result size? split words mode makes this way too huge
-        for (cacheEntry in cache) {
-            if (cacheEntry.value.isEmpty()) {
-                continue
-            }
-            val distances = cacheEntry.value.map { cacheValue ->
-                val wordSuffix = word
-                    .substring(
-                        cacheEntry.key, cacheValue.suffix ?: word.length
-                    )
-                    .filter { it != '|' }
-                val cacheWord = cacheValue.matchedWordInTrie
-                cacheValue to LEVENSHTEIN_DISTANCE.apply(wordSuffix, cacheWord)
-                    .toDouble() / wordSuffix.length.toDouble()
-            }
-            val min = distances.minBy { it.second }!!.second
-            val cleanedUpCache = distances
-                .filter { it.second <= min + 0.25 }
-                .map { it.first }.toMutableSet()
-            cache[cacheEntry.key] = cleanedUpCache
-        }
-    }
-
     private fun collectNextNodes(depth: Int, node: TrieNode): List<Triple<Int, TrieNode, String>> {
         val nextChars = mutableSetOf<String>()
         if (depth + 1 <= word.length) nextChars.add(word.substring(depth, depth + 1))
@@ -110,23 +88,21 @@ class TrieSearch(private val trie: Trie, search: String, private val splitWords:
             return emptyList()
         }
 
-        var fuzzyNextStrings = FUZZY_GROUPS
-            .filter {
-                var result = false
-                for (nextChar in nextChars) {
-                    if (it.contains(nextChar)) {
-                        result = true
-                        break
-                    }
+
+        val fuzzyNextStrings = mutableSetOf<String>()
+        FUZZY_GROUPS.forEach {
+            for (nextChar in nextChars) {
+                if (it.contains(nextChar)) {
+                    fuzzyNextStrings.addAll(it)
+                    break
                 }
-                result
             }
-            .flatten()
-            .toSet()
+        }
 
         if (fuzzyNextStrings.isEmpty()) {
             val nextChar = word.substring(depth, depth + 1)
-            fuzzyNextStrings = setOf(nextChar, nextChar + nextChar)
+            fuzzyNextStrings.add(nextChar)
+            fuzzyNextStrings.add(nextChar + nextChar)
         }
 
         val nextNodes = mutableListOf<Triple<Int, TrieNode, String>>()
@@ -134,8 +110,9 @@ class TrieSearch(private val trie: Trie, search: String, private val splitWords:
             var valid = true
             var currentNode = node
             for (char in fuzzyNextString) {
-                if (currentNode.hasChild(char)) {
-                    currentNode = currentNode.getChild(char)
+                val child = currentNode.getChild(char)
+                if (child != null) {
+                    currentNode = child
                 } else {
                     valid = false
                     break
@@ -154,41 +131,89 @@ class TrieSearch(private val trie: Trie, search: String, private val splitWords:
         var i = 0
         var lastChar: Char? = null
         for (char in search) {
-            if (char.isLetter()) {//TODO numbers and stuff?
-                word.append(char)
+            val lowerChar = char.toLowerCase()
+            if (lowerChar.isLetter()) {//TODO numbers and stuff?
+                word.append(lowerChar)
                 i++
             } else {
-                if (char.isWhitespace() && !(lastChar == null || lastChar.isWhitespace())) {
+                if (lowerChar.isWhitespace() && !(lastChar == null || lastChar.isWhitespace())) {
                     wordBeginnings.add(i)
                 }
             }
-            lastChar = char
+            lastChar = lowerChar
         }
         return word.toString()
     }
 
-    private fun expandResults(): List<List<Int>> {
-        if (!cache.containsKey(0)) {
-            return emptyList()
-        }
-        val results = mutableListOf<List<Int>>()
-        expandResultsRecursive(cache[0]!!, mutableListOf(), results)
-        return results
+    private fun collectResults(): List<List<Int>> {
+        return collectResultsRecursive(0).map { it.second }
     }
 
-    private fun expandResultsRecursive(
-        currentCacheEntry: MutableSet<TrieCacheEntry>,
-        currentResult: MutableList<Int>,
-        results: MutableList<List<Int>>
-    ) {
-        for (entry in currentCacheEntry) {
-            currentResult.add(entry.wordId)
-            if (entry.suffix != null) {
-                expandResultsRecursive(cache[entry.suffix]!!, currentResult, results)
-            } else {
-                results.add(currentResult.toList())
-            }
-            currentResult.removeAt(currentResult.size - 1)
+    private val collectCache = mutableMapOf<Int, List<Pair<Int, List<Int>>>>()
+
+    /**
+     * This collection works by recursivly calculating the best (=min) 100 results for a given node and then cache them into #collectCache.
+     * score is the levenshstein distance + the distance for the suffix you are using
+     */
+    private fun collectResultsRecursive(depth: Int): List<Pair<Int, List<Int>>> {
+        if (collectCache.containsKey(depth)) {
+            return collectCache[depth]!!
         }
+        val cacheEntry = cache[depth]
+        if (cacheEntry == null || cacheEntry.isEmpty()) {
+            collectCache[depth] = emptyList()
+            return emptyList()
+        }
+        // all our children. toList() is important since the index of a child is the same for #children , #childrenSuffixIndex and #suffixes
+        val children = cacheEntry.toList()
+        // childrenSuffixIndex is which child of the suffix should be used next (this relies on the children of the suffix being sorted)
+        val childrenSuffixIndex = Array(children.size) { 0 }
+        // suffixes are all suffixes, which are a pair of current score to which places are already in the result
+        val suffixes =
+            Array(children.size) { i ->
+                val suffix = children[i].suffix
+                if (suffix != null) {
+                    collectResultsRecursive(suffix)
+                } else {
+                    listOf(Pair(0, emptyList()))
+                }
+            }
+
+        val collectedForThisNode = mutableListOf<Pair<Int, List<Int>>>()
+        while (collectedForThisNode.size < maxResultSize) {
+            var minI = -1
+            var min: Int? = null
+            for (i in children.indices) {
+                val child = children[i]
+                if (childrenSuffixIndex[i] >= suffixes[i].size) {
+                    continue
+                } else {
+                    val phraseMatched = word
+                        .substring(
+                            depth, child.suffix ?: word.length
+                        )
+                    val levenshteinDistance = LEVENSHTEIN_DISTANCE.apply(phraseMatched, child.matchedWordInTrie)
+                    val distance = if (child.suffix == null) {
+                        levenshteinDistance
+                    } else {
+                        levenshteinDistance + suffixes[i][childrenSuffixIndex[i]].first
+                    }
+                    if (min == null || distance < min) {
+                        min = distance
+                        minI = i
+                    }
+                }
+            }
+            if (min == null) {
+                break
+            } else {
+                collectedForThisNode.add(
+                    Pair(min, listOf(children[minI].wordId) + suffixes[minI][childrenSuffixIndex[minI]].second)
+                )
+                childrenSuffixIndex[minI] = childrenSuffixIndex[minI] + 1
+            }
+        }
+        collectCache[depth] = collectedForThisNode
+        return collectedForThisNode
     }
 }

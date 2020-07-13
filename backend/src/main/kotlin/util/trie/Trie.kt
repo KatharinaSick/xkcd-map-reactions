@@ -11,6 +11,7 @@ class Trie(bytes: ByteArray) {
 }
 
 class TrieNode(private val buffer: ByteBuffer, private val offset: Int) {
+
     companion object {
         val CHAR_OFFSET = 0
         val OFFSET_OFFSET = 2
@@ -19,8 +20,12 @@ class TrieNode(private val buffer: ByteBuffer, private val offset: Int) {
         val WORD_SIZE = 4
     }
 
+    private val cachedIsWord = readWordCount() != 0.toByte()
+    private val endOfMyChildrenIndex = buffer.getInt(offset + OFFSET_OFFSET)
+    private val childStartIndex = offset + WORD_START_OFFSET + if (isWord()) WORD_SIZE else 0
+
     fun isWord(): Boolean {
-        return readWordCount() != 0.toByte()
+        return cachedIsWord
     }
 
     private fun readWordCount(): Byte {
@@ -31,17 +36,17 @@ class TrieNode(private val buffer: ByteBuffer, private val offset: Int) {
         return buffer.getInt(offset + WORD_START_OFFSET)
     }
 
-    fun hasChild(char: Char): Boolean {
-        return findChildIndex(char) != null
-    }
-
-    fun getChild(char: Char): TrieNode {
-        return TrieNode(buffer, findChildIndex(char)!!)
+    fun getChild(char: Char): TrieNode? {
+        val childIndex = findChildIndex(char)
+        return if (childIndex == null) {
+            null
+        } else {
+            TrieNode(buffer, childIndex)
+        }
     }
 
     private fun findChildIndex(char: Char): Int? {
-        val endOfMyChildrenIndex = buffer.getInt(offset + OFFSET_OFFSET)
-        var childIndex = offset + WORD_START_OFFSET + readWordCount() * WORD_SIZE
+        var childIndex = childStartIndex
         while (childIndex < endOfMyChildrenIndex) {
             if (buffer.getChar(childIndex + CHAR_OFFSET) == char) {
                 return childIndex
