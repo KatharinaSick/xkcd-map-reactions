@@ -1,14 +1,28 @@
 package util.trie
 
-data class TrieCacheEntry (
+data class TrieCacheEntry(
+    val results: MutableList<Pair<Int,List<Int>>> = mutableListOf(),
+    /**
+     * map from startindex to all
+     */
+    val matches: MutableList<TrieMatch> = mutableListOf(),
+
+    val isNeededFrom: MutableSet<Int> = mutableSetOf()
+)
+
+data class TrieMatch(
     /**
      * The id of the word that was matched
      */
     val wordId: Int,
     /**
-     * Reference to the next cache entry, null if the end of the search string was reached
+     * TODO
      */
-    val suffix: Int?,
+    val startDepth: Int,
+    /**
+     * TODO
+     */
+    val endDepth: Int,
     /**
      * Representation of the matched place in the trie.
      */
