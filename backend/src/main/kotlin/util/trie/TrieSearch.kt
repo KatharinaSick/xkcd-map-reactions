@@ -41,6 +41,7 @@ class TrieSearch(
     private val currentTriePath = StringBuilder()
 
     fun search(): List<List<Int>> {
+        cache[0] = TrieCacheEntry(mutableListOf(Pair(0, emptyList())))
         searchDepth(0)
         while (depthsToCompute.isNotEmpty()) {
             val depth = depthsToCompute.min()!!
@@ -57,20 +58,12 @@ class TrieSearch(
     }
 
     private fun cleanupDepth(depth: Int) {
-        //TODO remove old caches
         // all our children. toList() is important since the index of a child is the same for #children , #childrenSuffixIndex and #suffixes
         val children = cache[depth]!!.matches.toList()
         // childrenSuffixIndex is which child of the suffix should be used next (this relies on the children of the suffix being sorted)
         val childrenPrefixIndex = Array(children.size) { 0 }
         val prefixes =
-            Array(children.size) { i ->
-                val startDepth = children[i].startDepth
-                if (startDepth != 0) {
-                    cache[startDepth]!!.results
-                } else {
-                    listOf(Pair(0, emptyList<Int>()))
-                }
-            }
+            Array(children.size) { i -> cache[children[i].startDepth]!!.results }
 
         val childrenDistances =
             Array(children.size) { i ->
@@ -105,6 +98,15 @@ class TrieSearch(
                 childrenPrefixIndex[minI] = childrenPrefixIndex[minI] + 1
             }
         }
+
+        children.map { it.startDepth }.toSet()
+            .forEach {
+                val cacheEntry = cache[it]!!
+                cacheEntry.isNeededFrom.remove(depth)
+                if (cacheEntry.isNeededFrom.isEmpty()) {
+                    cache.remove(it)
+                }
+            }
     }
 
     private fun searchDepth(depth: Int) {
@@ -121,6 +123,7 @@ class TrieSearch(
             }
 
             cache[suffix]!!.matches.addAll(it.value)
+            cache[depth]!!.isNeededFrom.add(suffix)
         }
     }
 
