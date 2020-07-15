@@ -31,7 +31,7 @@ class TrieSearch(
             ofPair("w", "v"),
             ofPair("f", "v"),
             ofPair("k", "q")
-        )
+        ).precalc()
 
         private fun ofPair(s1: String, s2: String): Set<String> {
             return setOf(s1, s2, s1 + s1, s2 + s2, s1 + s2, s2 + s1)
@@ -167,49 +167,56 @@ class TrieSearch(
     }
 
     private fun collectNextNodes(depth: Int, node: TrieNode): List<Triple<Int, TrieNode, String>> {
-        val nextChars = mutableSetOf<String>()
+        val nextChars = mutableListOf<String>()
         if (depth + 1 <= word.length) nextChars.add(word.substring(depth, depth + 1))
         if (depth + 2 <= word.length) nextChars.add(word.substring(depth, depth + 2))
         if (nextChars.isEmpty()) {
             return emptyList()
         }
 
-
-        val fuzzyNextStrings = mutableSetOf<String>()
-        FUZZY_GROUPS.forEach {
-            for (nextChar in nextChars) {
-                if (it.contains(nextChar)) {
-                    fuzzyNextStrings.addAll(it)
-                    break
-                }
-            }
-        }
-
-        if (fuzzyNextStrings.isEmpty()) {
-            val nextChar = word.substring(depth, depth + 1)
-            fuzzyNextStrings.add(nextChar)
-            fuzzyNextStrings.add(nextChar + nextChar)
-        }
-
         val nextNodes = mutableListOf<Triple<Int, TrieNode, String>>()
-        for (fuzzyNextString in fuzzyNextStrings) {
-            var valid = true
-            var currentNode = node
-            for (char in fuzzyNextString) {
-                val child = currentNode.getChild(char)
-                if (child != null) {
-                    currentNode = child
-                } else {
-                    valid = false
-                    break
+        var found = false
+        nextChars.forEach { nextChar ->
+            val fuzzyMatches = FUZZY_GROUPS[nextChar]
+            if (fuzzyMatches != null) {
+                found = true
+                //TODO the heck, we are faster if we do stuff multiple times instead of deduplicating it with an hashset
+                fuzzyMatches.forEach {
+                    tryFuzzyString(it, depth, node, nextNodes)
                 }
             }
-            if (valid) {
-                nextNodes.add(Triple(depth + 1, currentNode, fuzzyNextString))
-                nextNodes.add(Triple(depth + 2, currentNode, fuzzyNextString))
+        }
+
+        if (!found) {
+            val nextChar = word.substring(depth, depth + 1)
+            tryFuzzyString(nextChar, depth, node, nextNodes)
+            tryFuzzyString(nextChar + nextChar, depth, node, nextNodes)
+        }
+
+        return nextNodes
+    }
+
+    private fun tryFuzzyString(
+        fuzzyMatchToTry: String,
+        depth: Int,
+        node: TrieNode,
+        nextNodes: MutableList<Triple<Int, TrieNode, String>>
+    ) {
+        var valid = true
+        var currentNode = node
+        for (char in fuzzyMatchToTry) {
+            val child = currentNode.getChild(char)
+            if (child != null) {
+                currentNode = child
+            } else {
+                valid = false
+                break
             }
         }
-        return nextNodes
+        if (valid) {
+            nextNodes.add(Triple(depth + 1, currentNode, fuzzyMatchToTry))
+            nextNodes.add(Triple(depth + 2, currentNode, fuzzyMatchToTry))
+        }
     }
 
     private fun prepare(search: String): String {
@@ -230,4 +237,12 @@ class TrieSearch(
         }
         return word.toString()
     }
+}
+
+private fun List<Set<String>>.precalc(): Map<String, Set<String>> {
+    val allStrings = toSet().flatten()
+    return allStrings.map { string ->
+        val allMatches = filter { it.contains(string) }.flatten().toSet()
+        string to allMatches
+    }.toMap()
 }
