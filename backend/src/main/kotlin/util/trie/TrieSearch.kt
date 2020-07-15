@@ -41,7 +41,7 @@ class TrieSearch(
     private val currentTriePath = StringBuilder()
 
     fun search(): List<List<Int>> {
-        cache[0] = TrieCacheEntry(mutableListOf(Pair(0, emptyList())))
+        cache[0] = TrieCacheEntry(mutableListOf(Pair(0, TrieResultNode(-1, null))))
         searchDepth(0)
         while (depthsToCompute.isNotEmpty()) {
             val depth = depthsToCompute.min()!!
@@ -49,12 +49,24 @@ class TrieSearch(
 
             cleanupDepth(depth)
             if (depth == word.length) {
-                return cache[depth]!!.results.map { it.second }
+                return makeToResultList(cache[depth]!!.results)
             } else {
                 searchDepth(depth)
             }
         }
         return emptyList()
+    }
+
+    private fun makeToResultList(resultChains: MutableList<Pair<Int, TrieResultNode>>): List<List<Int>> {
+        return resultChains.map {
+            val result = mutableListOf<Int>()
+            var currentNode: TrieResultNode? = it.second
+            while (currentNode != null && currentNode.wordId != -1) {
+                result.add(currentNode.wordId)
+                currentNode = currentNode.prefix
+            }
+            result.reversed()
+        }
     }
 
     private fun cleanupDepth(depth: Int) {
@@ -93,7 +105,7 @@ class TrieSearch(
                 break
             } else {
                 results.add(
-                    Pair(min, prefixes[minI][childrenPrefixIndex[minI]].second + listOf(children[minI].wordId))
+                    Pair(min, TrieResultNode(children[minI].wordId, prefixes[minI][childrenPrefixIndex[minI]].second))
                 )
                 childrenPrefixIndex[minI] = childrenPrefixIndex[minI] + 1
             }

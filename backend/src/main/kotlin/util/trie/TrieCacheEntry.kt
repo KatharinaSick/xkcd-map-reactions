@@ -1,13 +1,18 @@
 package util.trie
 
 data class TrieCacheEntry(
-    val results: MutableList<Pair<Int,List<Int>>> = mutableListOf(),
+    val results: MutableList<Pair<Int,TrieResultNode>> = mutableListOf(),
     /**
      * map from startindex to all
      */
     val matches: MutableList<TrieMatch> = mutableListOf(),
 
     val isNeededFrom: MutableSet<Int> = mutableSetOf()
+)
+
+data class TrieResultNode (
+    val wordId: Int,
+    val prefix: TrieResultNode?
 )
 
 data class TrieMatch(
