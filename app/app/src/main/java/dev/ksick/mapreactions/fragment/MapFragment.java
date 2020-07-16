@@ -197,13 +197,27 @@ public class MapFragment extends Fragment {
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
 
-        RoadManager roadManager = new OSRMRoadManager(getContext());
-        Road road = roadManager.getRoad(waypoints);
-        Polyline roadOverlay = RoadManager.buildRoadOverlay(road, getResources().getColor(R.color.colorPrimary), 8);
-        mapView.getOverlays().add(roadOverlay);
+        if (waypoints.size() > 1) {
+            RoadManager roadManager = new OSRMRoadManager(getContext());
+            Road road = roadManager.getRoad(waypoints);
+            int errorCount = 0;
+            while (road.mStatus != Road.STATUS_OK && errorCount < 3) {
+                road = roadManager.getRoad(waypoints);
+                errorCount += 1;
+            }
+            if (road.mStatus != Road.STATUS_OK) {
+                showError(getString(R.string.road_not_found));
+                return;
+            }
+            Polyline roadOverlay = RoadManager.buildRoadOverlay(road, getResources().getColor(R.color.colorPrimary), 8);
+            mapView.getOverlays().add(roadOverlay);
+            mapView.zoomToBoundingBox(roadOverlay.getBounds(), true, 150);
+        } else {
+            mapView.getController().setCenter(waypoints.get(0));
+            mapView.getController().zoomTo(9.0);
+        }
 
         mapView.getOverlays().addAll(textOverlays);
-        mapView.zoomToBoundingBox(roadOverlay.getBounds(), true, 100);
         mapView.invalidate();
     }
 
