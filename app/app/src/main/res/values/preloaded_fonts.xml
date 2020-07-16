@@ -3,7 +3,5 @@
     <array name="preloaded_fonts" translatable="false">
         <item>@font/cabin</item>
         <item>@font/roboto_condensed_bold</item>
-        <item>@font/roboto_slab</item>
-        <item>@font/ruda</item>
     </array>
 </resources>

@@ -19,9 +19,6 @@
         android:name="dev.ksick.mapreactions.fragment.MapFragment"
         tools:layout="@layout/fragment_map">
 
-        <action
-            android:id="@+id/action_MapFragment_to_PhraseInputFragment"
-            app:destination="@id/PhraseInputFragment" />
         <argument
             android:name="phrase"
             app:argType="string" />
