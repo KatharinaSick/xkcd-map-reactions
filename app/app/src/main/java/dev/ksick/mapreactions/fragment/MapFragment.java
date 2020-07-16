@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.os.Bundle;
 import android.os.StrictMode;
 import android.preference.PreferenceManager;
@@ -35,6 +36,7 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Polyline;
+import org.osmdroid.views.overlay.SpeechBalloonOverlay;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -43,7 +45,6 @@ import java.util.List;
 
 import dev.ksick.mapreactions.R;
 import dev.ksick.mapreactions.model.Place;
-import dev.ksick.mapreactions.util.NumberedTextOverlay;
 
 public class MapFragment extends Fragment {
 
@@ -82,7 +83,7 @@ public class MapFragment extends Fragment {
         view.findViewById(R.id.button_start_again).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                getActivity().getSupportFragmentManager().popBackStackImmediate();
+                getActivity().onBackPressed();
             }
         });
 
@@ -165,7 +166,7 @@ public class MapFragment extends Fragment {
         mapView.setMultiTouchControls(true);
 
         ArrayList<GeoPoint> waypoints = new ArrayList<>();
-        ArrayList<NumberedTextOverlay> textOverlays = new ArrayList<>();
+        ArrayList<SpeechBalloonOverlay> textOverlays = new ArrayList<>();
 
         int currentNumber = 1;
         for (Place place : route) {
@@ -173,13 +174,23 @@ public class MapFragment extends Fragment {
 
             waypoints.add(geoPoint);
 
-            NumberedTextOverlay numberedTextOverlay = new NumberedTextOverlay(currentNumber, place.getName(), geoPoint);
-            numberedTextOverlay.setTypeface(ResourcesCompat.getFont(getContext(), R.font.cabin));
-            numberedTextOverlay.setNumberTypeface(ResourcesCompat.getFont(getContext(), R.font.roboto_condensed_bold));
-            numberedTextOverlay.setBackgroundColor(getResources().getColor(R.color.colorPrimary));
-            numberedTextOverlay.setTextColor(Color.WHITE);
+            SpeechBalloonOverlay speechBalloonOverlay = new SpeechBalloonOverlay();
+            speechBalloonOverlay.setTitle(currentNumber + " - " + place.getName());
+            speechBalloonOverlay.setGeoPoint(geoPoint);
 
-            textOverlays.add(numberedTextOverlay);
+            Paint backgroundPaint = new Paint();
+            backgroundPaint.setColor(getResources().getColor(R.color.colorPrimary));
+            speechBalloonOverlay.setBackground(backgroundPaint);
+
+            Paint foregroundPaint = new Paint();
+            foregroundPaint.setColor(Color.WHITE);
+            foregroundPaint.setTypeface(ResourcesCompat.getFont(getContext(), R.font.cabin));
+            foregroundPaint.setTextSize(56);
+            speechBalloonOverlay.setForeground(foregroundPaint);
+
+            speechBalloonOverlay.setMargin(24);
+
+            textOverlays.add(speechBalloonOverlay);
             currentNumber = currentNumber + 1;
         }
 
