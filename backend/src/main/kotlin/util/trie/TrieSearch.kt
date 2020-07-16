@@ -214,8 +214,11 @@ class TrieSearch(
             }
         }
         if (valid) {
-            nextNodes.add(Triple(depth + 1, currentNode, fuzzyMatchToTry))
-            nextNodes.add(Triple(depth + 2, currentNode, fuzzyMatchToTry))
+            if (fuzzyMatchToTry.length > 1) {
+                nextNodes.add(Triple(depth + fuzzyMatchToTry.length - 1, currentNode, fuzzyMatchToTry))
+            }
+            nextNodes.add(Triple(depth + fuzzyMatchToTry.length, currentNode, fuzzyMatchToTry))
+            nextNodes.add(Triple(depth + fuzzyMatchToTry.length + 1, currentNode, fuzzyMatchToTry))
         }
     }
 
