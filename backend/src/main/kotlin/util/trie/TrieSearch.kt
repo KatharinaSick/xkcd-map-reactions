@@ -13,6 +13,11 @@ class TrieSearch(
             setOf("z", "zz", "s", "ss", "ts", "zs"),
             setOf("ou", "oe", "ue", "uo"),
             setOf("qu", "k"),
+            setOf("ä", "ae", "e", "a"),
+            setOf("ü", "ue", "u"),
+            setOf("ö", "oe", "o"),
+            setOf("ch", "k", "g", "sch"),
+            setOf("sch", "sh", "s"),
             ofPair("c", "z"),
             ofPair("a", "e"),
             ofPair("i", "y"),
@@ -26,7 +31,7 @@ class TrieSearch(
             ofPair("w", "v"),
             ofPair("f", "v"),
             ofPair("k", "q")
-        )
+        ).precalc()
 
         private fun ofPair(s1: String, s2: String): Set<String> {
             return setOf(s1, s2, s1 + s1, s2 + s2, s1 + s2, s2 + s1)
@@ -36,42 +41,123 @@ class TrieSearch(
     private val wordBeginnings = mutableSetOf<Int>()
     private val word = prepare(search)
 
-    private val cache = mutableMapOf<Int, MutableSet<TrieCacheEntry>>()
+    private val cache = mutableMapOf<Int, TrieCacheEntry>()
+    private val depthsToCompute = mutableSetOf<Int>()
     private val currentTriePath = StringBuilder()
 
     fun search(): List<List<Int>> {
-        val depthsToCompute = mutableSetOf(0)
+        cache[0] = TrieCacheEntry(mutableListOf(Pair(0, TrieResultNode(-1, null))))
+        searchDepth(0)
         while (depthsToCompute.isNotEmpty()) {
-            val depth = depthsToCompute.first()
+            val depth = depthsToCompute.min()!!
             depthsToCompute.remove(depth)
 
-            val results = mutableSetOf<TrieCacheEntry>()
-            recursiveSearch(depth, trie.getRoot(), results)
-            cache[depth] = results
-
-            results.forEach {
-                if (it.suffix != null && !cache.containsKey(it.suffix)) {
-                    depthsToCompute.add(it.suffix)
-                }
+            cleanupDepth(depth)
+            if (depth == word.length) {
+                return makeToResultList(cache[depth]!!.results)
+            } else {
+                searchDepth(depth)
             }
         }
-        return collectResults()
+        return emptyList()
     }
 
-    private fun recursiveSearch(depth: Int, node: TrieNode, results: MutableSet<TrieCacheEntry>) {
+    private fun makeToResultList(resultChains: MutableList<Pair<Int, TrieResultNode>>): List<List<Int>> {
+        return resultChains.map {
+            val result = mutableListOf<Int>()
+            var currentNode: TrieResultNode? = it.second
+            while (currentNode != null && currentNode.wordId != -1) {
+                result.add(currentNode.wordId)
+                currentNode = currentNode.prefix
+            }
+            result.reversed()
+        }
+    }
+
+    private fun cleanupDepth(depth: Int) {
+        // all our matches. toList() is important since the index of a match is the same for #matches, #matchPrefixIndexes and #prefixes
+        val matches = cache[depth]!!.matches.toList()
+        // matchPrefixIndexes is which match of the prefix should be used next (this relies on the matches of the prefix being sorted)
+        val matchPrefixIndexes = Array(matches.size) { 0 }
+        val prefixes =
+            Array(matches.size) { i -> cache[matches[i].startDepth]!!.results }
+
+        val matchDistances =
+            Array(matches.size) { i ->
+                val phraseMatched = word
+                    .substring(
+                        matches[i].startDepth, matches[i].endDepth
+                    )
+                LEVENSHTEIN_DISTANCE.apply(phraseMatched, matches[i].matchedWordInTrie)
+            }
+
+        val results = cache[depth]!!.results
+        while (results.size < maxResultSize) {
+            var minI = -1
+            var min: Int? = null
+            for (i in matches.indices) {
+                if (matchPrefixIndexes[i] >= prefixes[i].size) {
+                    continue
+                } else {
+                    val distance = matchDistances[i] + prefixes[i][matchPrefixIndexes[i]].first
+                    if (min == null || distance < min) {
+                        min = distance
+                        minI = i
+                    }
+                }
+            }
+            if (min == null) {
+                break
+            } else {
+                results.add(
+                    Pair(min, TrieResultNode(matches[minI].wordId, prefixes[minI][matchPrefixIndexes[minI]].second))
+                )
+                matchPrefixIndexes[minI] = matchPrefixIndexes[minI] + 1
+            }
+        }
+
+        matches.map { it.startDepth }.toSet()
+            .forEach {
+                val cacheEntry = cache[it]!!
+                cacheEntry.isNeededFrom.remove(depth)
+                if (cacheEntry.isNeededFrom.isEmpty()) {
+                    cache.remove(it)
+                }
+            }
+    }
+
+    private fun searchDepth(depth: Int) {
+        val results = mutableSetOf<TrieMatch>()
+        recursiveSearch(depth, depth, trie.getRoot(), results)
+
+        val cacheGroups = results.groupBy { it.endDepth }
+        cacheGroups.forEach {
+            val suffix = it.key
+
+            if (!cache.containsKey(suffix)) {
+                depthsToCompute.add(suffix)
+                cache[suffix] = TrieCacheEntry()
+            }
+
+            cache[suffix]!!.matches.addAll(it.value)
+            cache[depth]!!.isNeededFrom.add(suffix)
+        }
+    }
+
+    private fun recursiveSearch(startDepth: Int, depth: Int, node: TrieNode, results: MutableSet<TrieMatch>) {
         if (depth >= word.length) {
             if (node.isWord()) {
-                results.add(TrieCacheEntry(node.getWord(), null, currentTriePath.toString()))
+                results.add(TrieMatch(node.getWord(), startDepth, depth, currentTriePath.toString()))
             }
             return
         }
         if (isAcceptableWordSplit(depth) && node.isWord()) {
-            results.add(TrieCacheEntry(node.getWord(), depth, currentTriePath.toString()))
+            results.add(TrieMatch(node.getWord(), startDepth, depth, currentTriePath.toString()))
         }
         val nextNodes = collectNextNodes(depth, node)
         for (nextNode in nextNodes) {
             currentTriePath.append(nextNode.third)
-            recursiveSearch(nextNode.first, nextNode.second, results)
+            recursiveSearch(startDepth, nextNode.first, nextNode.second, results)
             currentTriePath.setLength(currentTriePath.length - nextNode.third.length)
         }
     }
@@ -81,49 +167,59 @@ class TrieSearch(
     }
 
     private fun collectNextNodes(depth: Int, node: TrieNode): List<Triple<Int, TrieNode, String>> {
-        val nextChars = mutableSetOf<String>()
+        val nextChars = mutableListOf<String>()
         if (depth + 1 <= word.length) nextChars.add(word.substring(depth, depth + 1))
         if (depth + 2 <= word.length) nextChars.add(word.substring(depth, depth + 2))
         if (nextChars.isEmpty()) {
             return emptyList()
         }
 
-
-        val fuzzyNextStrings = mutableSetOf<String>()
-        FUZZY_GROUPS.forEach {
-            for (nextChar in nextChars) {
-                if (it.contains(nextChar)) {
-                    fuzzyNextStrings.addAll(it)
-                    break
-                }
-            }
-        }
-
-        if (fuzzyNextStrings.isEmpty()) {
-            val nextChar = word.substring(depth, depth + 1)
-            fuzzyNextStrings.add(nextChar)
-            fuzzyNextStrings.add(nextChar + nextChar)
-        }
-
         val nextNodes = mutableListOf<Triple<Int, TrieNode, String>>()
-        for (fuzzyNextString in fuzzyNextStrings) {
-            var valid = true
-            var currentNode = node
-            for (char in fuzzyNextString) {
-                val child = currentNode.getChild(char)
-                if (child != null) {
-                    currentNode = child
-                } else {
-                    valid = false
-                    break
+        var found = false
+        nextChars.forEach { nextChar ->
+            val fuzzyMatches = FUZZY_GROUPS[nextChar]
+            if (fuzzyMatches != null) {
+                found = true
+                //TODO the heck, we are faster if we do stuff multiple times instead of deduplicating it with an hashset
+                fuzzyMatches.forEach {
+                    tryFuzzyString(it, depth, node, nextNodes)
                 }
             }
-            if (valid) {
-                nextNodes.add(Triple(depth + 1, currentNode, fuzzyNextString))
-                nextNodes.add(Triple(depth + 2, currentNode, fuzzyNextString))
+        }
+
+        if (!found) {
+            val nextChar = word.substring(depth, depth + 1)
+            tryFuzzyString(nextChar, depth, node, nextNodes)
+            tryFuzzyString(nextChar + nextChar, depth, node, nextNodes)
+        }
+
+        return nextNodes
+    }
+
+    private fun tryFuzzyString(
+        fuzzyMatchToTry: String,
+        depth: Int,
+        node: TrieNode,
+        nextNodes: MutableList<Triple<Int, TrieNode, String>>
+    ) {
+        var valid = true
+        var currentNode = node
+        for (char in fuzzyMatchToTry) {
+            val child = currentNode.getChild(char)
+            if (child != null) {
+                currentNode = child
+            } else {
+                valid = false
+                break
             }
         }
-        return nextNodes
+        if (valid) {
+            if (fuzzyMatchToTry.length > 1) {
+                nextNodes.add(Triple(depth + fuzzyMatchToTry.length - 1, currentNode, fuzzyMatchToTry))
+            }
+            nextNodes.add(Triple(depth + fuzzyMatchToTry.length, currentNode, fuzzyMatchToTry))
+            nextNodes.add(Triple(depth + fuzzyMatchToTry.length + 1, currentNode, fuzzyMatchToTry))
+        }
     }
 
     private fun prepare(search: String): String {
@@ -144,79 +240,12 @@ class TrieSearch(
         }
         return word.toString()
     }
+}
 
-    private fun collectResults(): List<List<Int>> {
-        return collectResultsRecursive(0).map { it.second }
-    }
-
-    private val collectCache = mutableMapOf<Int, List<Pair<Int, List<Int>>>>()
-
-    /**
-     * This collection works by recursivly calculating the best (=min) 100 results for a given node and then cache them into #collectCache.
-     * score is the levenshstein distance + the distance for the suffix you are using
-     */
-    private fun collectResultsRecursive(depth: Int): List<Pair<Int, List<Int>>> {
-        if (collectCache.containsKey(depth)) {
-            return collectCache[depth]!!
-        }
-        val cacheEntry = cache[depth]
-        if (cacheEntry == null || cacheEntry.isEmpty()) {
-            collectCache[depth] = emptyList()
-            return emptyList()
-        }
-        // all our children. toList() is important since the index of a child is the same for #children , #childrenSuffixIndex and #suffixes
-        val children = cacheEntry.toList()
-        // childrenSuffixIndex is which child of the suffix should be used next (this relies on the children of the suffix being sorted)
-        val childrenSuffixIndex = Array(children.size) { 0 }
-        // suffixes are all suffixes, which are a pair of current score to which places are already in the result
-        val suffixes =
-            Array(children.size) { i ->
-                val suffix = children[i].suffix
-                if (suffix != null) {
-                    collectResultsRecursive(suffix)
-                } else {
-                    listOf(Pair(0, emptyList()))
-                }
-            }
-        val childrenDistances =
-            Array(children.size) { i ->
-                val phraseMatched = word
-                    .substring(
-                        depth, children[i].suffix ?: word.length
-                    )
-                LEVENSHTEIN_DISTANCE.apply(phraseMatched, children[i].matchedWordInTrie)
-            }
-
-        val collectedForThisNode = mutableListOf<Pair<Int, List<Int>>>()
-        while (collectedForThisNode.size < maxResultSize) {
-            var minI = -1
-            var min: Int? = null
-            for (i in children.indices) {
-                val child = children[i]
-                if (childrenSuffixIndex[i] >= suffixes[i].size) {
-                    continue
-                } else {
-                    val distance = if (child.suffix == null) {
-                        childrenDistances[i]
-                    } else {
-                        childrenDistances[i] + suffixes[i][childrenSuffixIndex[i]].first
-                    }
-                    if (min == null || distance < min) {
-                        min = distance
-                        minI = i
-                    }
-                }
-            }
-            if (min == null) {
-                break
-            } else {
-                collectedForThisNode.add(
-                    Pair(min, listOf(children[minI].wordId) + suffixes[minI][childrenSuffixIndex[minI]].second)
-                )
-                childrenSuffixIndex[minI] = childrenSuffixIndex[minI] + 1
-            }
-        }
-        collectCache[depth] = collectedForThisNode
-        return collectedForThisNode
-    }
+private fun List<Set<String>>.precalc(): Map<String, Set<String>> {
+    val allStrings = toSet().flatten()
+    return allStrings.map { string ->
+        val allMatches = filter { it.contains(string) }.flatten().toSet()
+        string to allMatches
+    }.toMap()
 }
