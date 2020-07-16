@@ -24,8 +24,8 @@ This part of the project can be used to set up the database. It is a Java projec
 3. Run `mvn compile`
 4. Check if everything is ok with `mvn flyway:info` and then migrate everything with `mvn flyway:migrate`. Depending on your machine and database this can take up to 10 hours, but if everything is local it should complete within 2 or 3 hours.
 
-## frontend
-The frontend is not implemented yet, but will follow in the next weeks.
+## app
+This directory contains the code for a simple Android App that allows the user to input a phrase which will be rendered to a route using [osmdroid](https://github.com/osmdroid/osmdroid).
 
 # Contributors
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
