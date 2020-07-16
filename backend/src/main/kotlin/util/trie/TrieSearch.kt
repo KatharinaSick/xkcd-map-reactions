@@ -75,31 +75,31 @@ class TrieSearch(
     }
 
     private fun cleanupDepth(depth: Int) {
-        // all our children. toList() is important since the index of a child is the same for #children , #childrenSuffixIndex and #suffixes
-        val children = cache[depth]!!.matches.toList()
-        // childrenSuffixIndex is which child of the suffix should be used next (this relies on the children of the suffix being sorted)
-        val childrenPrefixIndex = Array(children.size) { 0 }
+        // all our matches. toList() is important since the index of a match is the same for #matches, #matchPrefixIndexes and #prefixes
+        val matches = cache[depth]!!.matches.toList()
+        // matchPrefixIndexes is which match of the prefix should be used next (this relies on the matches of the prefix being sorted)
+        val matchPrefixIndexes = Array(matches.size) { 0 }
         val prefixes =
-            Array(children.size) { i -> cache[children[i].startDepth]!!.results }
+            Array(matches.size) { i -> cache[matches[i].startDepth]!!.results }
 
-        val childrenDistances =
-            Array(children.size) { i ->
+        val matchDistances =
+            Array(matches.size) { i ->
                 val phraseMatched = word
                     .substring(
-                        children[i].startDepth, children[i].endDepth
+                        matches[i].startDepth, matches[i].endDepth
                     )
-                LEVENSHTEIN_DISTANCE.apply(phraseMatched, children[i].matchedWordInTrie)
+                LEVENSHTEIN_DISTANCE.apply(phraseMatched, matches[i].matchedWordInTrie)
             }
 
         val results = cache[depth]!!.results
         while (results.size < maxResultSize) {
             var minI = -1
             var min: Int? = null
-            for (i in children.indices) {
-                if (childrenPrefixIndex[i] >= prefixes[i].size) {
+            for (i in matches.indices) {
+                if (matchPrefixIndexes[i] >= prefixes[i].size) {
                     continue
                 } else {
-                    val distance = childrenDistances[i] + prefixes[i][childrenPrefixIndex[i]].first
+                    val distance = matchDistances[i] + prefixes[i][matchPrefixIndexes[i]].first
                     if (min == null || distance < min) {
                         min = distance
                         minI = i
@@ -110,13 +110,13 @@ class TrieSearch(
                 break
             } else {
                 results.add(
-                    Pair(min, TrieResultNode(children[minI].wordId, prefixes[minI][childrenPrefixIndex[minI]].second))
+                    Pair(min, TrieResultNode(matches[minI].wordId, prefixes[minI][matchPrefixIndexes[minI]].second))
                 )
-                childrenPrefixIndex[minI] = childrenPrefixIndex[minI] + 1
+                matchPrefixIndexes[minI] = matchPrefixIndexes[minI] + 1
             }
         }
 
-        children.map { it.startDepth }.toSet()
+        matches.map { it.startDepth }.toSet()
             .forEach {
                 val cacheEntry = cache[it]!!
                 cacheEntry.isNeededFrom.remove(depth)
