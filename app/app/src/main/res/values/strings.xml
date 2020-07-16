@@ -17,4 +17,8 @@
     <string name="storage_permission_necessary_message">Die Karte kann leider nur geladen werden, wenn du uns erlaubst etwas auf deinem Telefon zu speichern.</string>
     <string name="give_storage_permission">Erlaubnis erteilen</string>
     <string name="close_app">App schließen</string>
+    <string name="error">Fehler</string>
+
+    <string name="info">Information</string>
+    <string name="icon_info"><div>Icons made by <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div></string>
 </resources>

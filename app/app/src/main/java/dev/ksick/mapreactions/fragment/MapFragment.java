@@ -224,7 +224,7 @@ public class MapFragment extends Fragment {
 
     private void showError(String message) {
         new AlertDialog.Builder(getContext())
-                .setTitle("Error")
+                .setTitle(getString(R.string.error))
                 .setMessage(message)
                 .show();
     }

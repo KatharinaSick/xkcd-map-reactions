@@ -1,5 +1,6 @@
 package dev.ksick.mapreactions.fragment;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -91,6 +92,9 @@ public class PhraseInputFragment extends Fragment {
     }
 
     public void onClickedInfo() {
-
+            new AlertDialog.Builder(getContext())
+                    .setTitle(getString(R.string.info))
+                    .setMessage(getString(R.string.icon_info))
+                    .show();
     }
 }
