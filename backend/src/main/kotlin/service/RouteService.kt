@@ -4,11 +4,6 @@ import exception.BadRequestException
 import exception.HttpException
 import exception.NotFoundException
 import model.Place
-import org.apache.commons.codec.language.Nysiis
-import org.apache.commons.codec.language.Soundex
-import org.apache.commons.codec.language.bm.BeiderMorseEncoder
-import org.apache.commons.text.similarity.LevenshteinDistance
-import persistence.PlaceRepository
 
 class RouteService {
 

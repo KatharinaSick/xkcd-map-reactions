@@ -8,12 +8,12 @@ import org.apache.commons.codec.language.Nysiis
 import org.apache.commons.codec.language.Soundex
 import org.apache.commons.codec.language.bm.BeiderMorseEncoder
 import org.apache.commons.text.similarity.LevenshteinDistance
-import persistence.PlaceRepository
+import persistence.UsPlaceRepository
 import kotlin.streams.asSequence
 
 class PhoneticAlgorithmSearchService {
 
-    private val placeRepository = PlaceRepository()
+    private val placeRepository = UsPlaceRepository()
 
     private val beiderMorseEncoder = BeiderMorseEncoder()
     private val nysiisEncoder = Nysiis()

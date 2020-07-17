@@ -1,4 +1,4 @@
-package persistence.dao
+package persistence.dao.us
 
 import org.jetbrains.exposed.dao.LongEntity
 import org.jetbrains.exposed.dao.LongEntityClass

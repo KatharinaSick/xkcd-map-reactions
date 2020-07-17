@@ -1,4 +1,4 @@
-package persistence.dao
+package persistence.dao.us
 
 import org.jetbrains.exposed.dao.LongEntity
 import org.jetbrains.exposed.dao.LongEntityClass
@@ -11,7 +11,9 @@ object BeiderMorseEncodedPlaces : LongIdTable("beider_morse_encoded_places") {
 }
 
 class BeiderMorseEncodedPlaceDao(id: EntityID<Long>) : LongEntity(id) {
-    companion object : LongEntityClass<BeiderMorseEncodedPlaceDao>(BeiderMorseEncodedPlaces)
+    companion object : LongEntityClass<BeiderMorseEncodedPlaceDao>(
+        BeiderMorseEncodedPlaces
+    )
 
     var code by BeiderMorseEncodedPlaces.code
     var place by PlaceDao referencedOn BeiderMorseEncodedPlaces.place

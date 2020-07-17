@@ -2,7 +2,7 @@ package service
 
 import exception.HttpException
 import model.Place
-import persistence.PlaceRepository
+import persistence.UsPlaceRepository
 import util.trie.Trie
 import util.trie.TrieSearch
 import java.io.BufferedInputStream
@@ -10,7 +10,7 @@ import java.util.zip.GZIPInputStream
 
 class TrieSearchService {
     private val trie = loadTrie()
-    private val placeRepository = PlaceRepository()
+    private val placeRepository = UsPlaceRepository()
 
     @Throws(HttpException::class)
     fun mapPhraseToRoute(search: String): List<Place>? {

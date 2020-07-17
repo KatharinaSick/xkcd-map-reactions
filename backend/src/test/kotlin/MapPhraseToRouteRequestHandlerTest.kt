@@ -35,9 +35,9 @@ internal class MapPhraseToRouteRequestHandlerTest {
     @BeforeEach
     fun setUp() {
         every { routeService.mapPhraseToRoute(validPhrase) } returns listOf(
-            Place("place 1", 1.0, 2.0),
-            Place("place 2", 1.0, 2.0),
-            Place("place 3", 1.0, 2.0)
+            Place(1,"place 1", 1.0, 2.0),
+            Place(2,"place 2", 1.0, 2.0),
+            Place(3,"place 3", 1.0, 2.0)
         )
 
         every { routeService.mapPhraseToRoute(emptyResultPhrase) } throws NotFoundException(emptyResultPhrase)

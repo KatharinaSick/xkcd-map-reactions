@@ -1,6 +1,8 @@
 package util.trie
 
+import persistence.DachPlaceRepository
 import persistence.PlaceRepository
+import persistence.UsPlaceRepository
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -9,34 +11,37 @@ import java.util.stream.Collectors
 import java.util.zip.GZIPOutputStream
 import kotlin.system.measureTimeMillis
 
-val OUTPUT_PATH = ".\\backend\\src\\main\\resources\\US.trie"
-
 /**
- * Creates the US.trie file in the resources folder, which is necessary to map phrases to routes. This file is not
+ * Creates the US.trie and DACH.trie files in the resources folder, which is necessary to map phrases to routes. This file is not
  * added to git, therefore it needs to be generated before running the project for the first time.
  */
 fun main() {
+    createAndSaveTrie("[US]", UsPlaceRepository(), "src/main/resources/US.trie")
+    createAndSaveTrie("[DACH]",DachPlaceRepository(), "src/main/resources/DACH.trie")
+}
+
+fun createAndSaveTrie(logPrefix: String, placeRepository: PlaceRepository, fileOutputPath: String) {
     var trie: CreateTrie? = null
     var measureTimeMillis: Long
     measureTimeMillis = measureTimeMillis {
-        trie = createTrie()
+        trie = createTrie(placeRepository)
     }
-    println("create took: $measureTimeMillis ms")
+    println("$logPrefix create took: $measureTimeMillis ms")
     measureTimeMillis = measureTimeMillis {
         trie!!.calculateOffsets()
     }
-    println("calculating offset took: $measureTimeMillis ms")
+    println("$logPrefix calculating offset took: $measureTimeMillis ms")
     measureTimeMillis = measureTimeMillis {
-        saveTrie(trie!!)
+        saveTrie(trie!!, fileOutputPath)
     }
-    println("save took: $measureTimeMillis ms")
+    println("$logPrefix save took: $measureTimeMillis ms")
 }
 
-fun saveTrie(trie: CreateTrie) {
+fun saveTrie(trie: CreateTrie, outputPath: String) {
     val out =
         BufferedOutputStream(
             GZIPOutputStream(
-                FileOutputStream(File(OUTPUT_PATH))
+                FileOutputStream(File(outputPath))
             )
         )
 
@@ -76,19 +81,18 @@ fun prepare(search: String): String {
         .stream().collect(Collectors.joining())
 }
 
-fun createTrie(): CreateTrie {
+fun createTrie(placeRepository: PlaceRepository): CreateTrie {
     val trie = CreateTrie()
     var i = 0
-    PlaceRepository()
+    placeRepository
         .findAll()
         .filter { it.name.isNotEmpty() }
         .map {
-            it.id.value to prepare(it.name)
+            it.id to prepare(it.name)
         }
         .filter {
             it.second.isNotEmpty()
         }
-//        .limit(200)
         .forEach {
             i++
             if (i % 10000 == 0) {

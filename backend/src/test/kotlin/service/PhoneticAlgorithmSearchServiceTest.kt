@@ -16,13 +16,13 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import persistence.PlaceRepository
+import persistence.UsPlaceRepository
 
 @ExtendWith(MockKExtension::class)
 internal class PhoneticAlgorithmSearchServiceTest {
 
     @MockK
-    lateinit var placeRepository: PlaceRepository
+    lateinit var placeRepository: UsPlaceRepository
 
     @OverrideMockKs
     var phoneticAlgorithmSearchService = PhoneticAlgorithmSearchService()
@@ -33,10 +33,10 @@ internal class PhoneticAlgorithmSearchServiceTest {
     private val nysiisTestCode = Nysiis().encode(testWord)
     private val soundexTestCode = Soundex().encode(testWord)
 
-    private val place1 = Place("place 1", 1.0, 2.0)
-    private val place2 = Place("place 2", 1.0, 2.0)
-    private val place3 = Place("place 3", 1.0, 2.0)
-    private val place4 = Place("place 4", 1.0, 2.0)
+    private val place1 = Place(1,"place 1", 1.0, 2.0)
+    private val place2 = Place(2, "place 2", 1.0, 2.0)
+    private val place3 = Place(3, "place 3", 1.0, 2.0)
+    private val place4 = Place(4,"place 4", 1.0, 2.0)
 
     @Test
     fun `mapPhraseToRoute() throws a BadRequestException when the list of words to map is empty`() {
