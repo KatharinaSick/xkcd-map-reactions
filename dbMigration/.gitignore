@@ -1,5 +1,8 @@
 # US city file (too large for git)
 src/main/resources/US.txt
+src/main/resources/AT.txt
+src/main/resources/DE.txt
+src/main/resources/CH.txt
 
 target/*
 
