@@ -8,12 +8,16 @@ import org.apache.commons.codec.language.Nysiis
 import org.apache.commons.codec.language.Soundex
 import org.apache.commons.codec.language.bm.BeiderMorseEncoder
 import org.apache.commons.text.similarity.LevenshteinDistance
+import persistence.DachPlaceRepository
+import persistence.PlaceRepository
 import persistence.UsPlaceRepository
+import util.Region
 import kotlin.streams.asSequence
 
 class PhoneticAlgorithmSearchService {
 
-    private val placeRepository = UsPlaceRepository()
+    private val usPlaceRepository = UsPlaceRepository()
+    private val dachPlaceRepository = DachPlaceRepository()
 
     private val beiderMorseEncoder = BeiderMorseEncoder()
     private val nysiisEncoder = Nysiis()
@@ -23,15 +27,20 @@ class PhoneticAlgorithmSearchService {
     /**
      * Maps the passed phrase to a route (a list of places) that sounds similar.
      *
-     * @param wordsToMap the phrase to map to a route.
+     * @param phrase the phrase to map to a route.
      * @return a list of places representing the mapped route.
      */
     @Throws(HttpException::class)
-    fun mapPhraseToRoute(phrase: String): List<Place>? {
+    fun mapPhraseToRoute(phrase: String, region: Region): List<Place>? {
         val wordsToMap = splitPhraseToWords(phrase)
 
         if (wordsToMap.isEmpty()) {
             throw BadRequestException("Phrase must not be empty")
+        }
+
+        val placeRepository = when (region) {
+            Region.US -> usPlaceRepository
+            Region.DACH -> dachPlaceRepository
         }
 
         val route = ArrayList<Place>()
@@ -45,7 +54,7 @@ class PhoneticAlgorithmSearchService {
                 return@forEach
             }
 
-            val matches = getPhoneticMatchesForWord(word)
+            val matches = getPhoneticMatchesForWord(placeRepository, word)
             if (matches.isEmpty()) {
                 throw NotFoundException("No phonetic match found for \"$word\"")
             }
@@ -63,7 +72,7 @@ class PhoneticAlgorithmSearchService {
      * @param word the word to find similar sounding places for.
      * @return a list of places that match to the passed word.
      */
-    private fun getPhoneticMatchesForWord(word: String): List<Place> {
+    private fun getPhoneticMatchesForWord(placeRepository: PlaceRepository, word: String): List<Place> {
         // Nysiis
         val nysiisMatches = placeRepository.findAllWhereNysiisCodeMatches(nysiisEncoder.encode(word))
 
@@ -122,7 +131,7 @@ class PhoneticAlgorithmSearchService {
      * @param phrase the phrase to check and split.
      * @return a list of all words contained in the passed phrase.
      */
-    fun splitPhraseToWords(phrase: String?): List<String> {
+    private fun splitPhraseToWords(phrase: String?): List<String> {
         if (phrase == null || phrase.isBlank()) {
             throw BadRequestException("Phrase must not be empty")
         }

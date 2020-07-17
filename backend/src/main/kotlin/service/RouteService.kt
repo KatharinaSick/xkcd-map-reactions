@@ -1,9 +1,11 @@
 package service
 
+import com.amazonaws.services.lambda.runtime.LambdaLogger
 import exception.BadRequestException
 import exception.HttpException
 import exception.NotFoundException
 import model.Place
+import util.Region
 
 class RouteService {
 
@@ -13,19 +15,28 @@ class RouteService {
     /**
      * Maps the passed phrase to a route (a list of places) that sounds similar.
      *
-     * @param wordsToMap the phrase to map to a route.
+     * @param phrase the phrase to map to a route.
      * @return a list of places representing the mapped route.
      */
     @Throws(HttpException::class)
-    fun mapPhraseToRoute(phrase: String?): List<Place> {
+    fun mapPhraseToRoute(phrase: String?, phoneticFirst: Boolean, region: Region): List<Place> {
         if (phrase == null || phrase.isBlank()) {
             throw BadRequestException("Phrase must not be empty")
         }
 
-        var route = trieSearchService.mapPhraseToRoute(phrase)
+        var route = if (phoneticFirst) {
+            phoneticAlgorithmSearchService.mapPhraseToRoute(phrase, region)
+        } else {
+            trieSearchService.mapPhraseToRoute(phrase, region)
+        }
+
 
         if (route == null || route.isEmpty()) {
-            route = phoneticAlgorithmSearchService.mapPhraseToRoute(phrase)
+            route = if (phoneticFirst) {
+                trieSearchService.mapPhraseToRoute(phrase, region)
+            } else {
+                phoneticAlgorithmSearchService.mapPhraseToRoute(phrase, region)
+            }
         }
 
         if (route == null || route.isEmpty()) {

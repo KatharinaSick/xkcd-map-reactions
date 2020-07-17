@@ -6,9 +6,13 @@ import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.lowerCase
 import org.jetbrains.exposed.sql.transactions.transaction
 import persistence.dao.dach.BeiderMorseEncodedDachPlaceDao
+import persistence.dao.dach.BeiderMorseEncodedDachPlaces
 import persistence.dao.dach.DachPlaceDao
+import persistence.dao.dach.DachPlaces
 import persistence.dao.dach.NysiisEncodedDachPlaceDao
+import persistence.dao.dach.NysiisEncodedDachPlaces
 import persistence.dao.dach.SoundexEncodedDachPlaceDao
+import persistence.dao.dach.SoundexEncodedDachPlaces
 import persistence.dao.us.BeiderMorseEncodedPlaceDao
 import persistence.dao.us.BeiderMorseEncodedPlaces
 import persistence.dao.us.NysiisEncodedPlaceDao
@@ -33,7 +37,7 @@ class DachPlaceRepository : PlaceRepository {
     override fun findAllWhereNameMatchesIgnoreCase(name: String): List<Place> {
         return transaction {
             DachPlaceDao
-                .find { Places.name.lowerCase() eq name.toLowerCase() }
+                .find { DachPlaces.name.lowerCase() eq name.toLowerCase() }
                 .map { it.toModel() }
         }
     }
@@ -42,7 +46,7 @@ class DachPlaceRepository : PlaceRepository {
     override fun findAllWhereNysiisCodeMatches(nysiisCode: String): List<Place> {
         return transaction {
             NysiisEncodedDachPlaceDao
-                .find { NysiisEncodedPlaces.code eq nysiisCode }
+                .find { NysiisEncodedDachPlaces.code eq nysiisCode }
                 .map { it.place.toModel() }
         }
     }
@@ -50,7 +54,7 @@ class DachPlaceRepository : PlaceRepository {
     override fun findAllWhereBeiderMorseCodeMatches(beiderMorseCode: String): List<Place> {
         return transaction {
             BeiderMorseEncodedDachPlaceDao
-                .find { BeiderMorseEncodedPlaces.code eq beiderMorseCode }
+                .find { BeiderMorseEncodedDachPlaces.code eq beiderMorseCode }
                 .map { it.place.toModel() }
         }
     }
@@ -59,7 +63,7 @@ class DachPlaceRepository : PlaceRepository {
         return transaction {
             try {
                 SoundexEncodedDachPlaceDao
-                    .find { SoundexEncodedPlaces.code eq soundexCode }
+                    .find { SoundexEncodedDachPlaces.code eq soundexCode }
                     .map { it.place.toModel() }
             } catch (e: IllegalArgumentException) {
                 ArrayList()
@@ -72,9 +76,12 @@ class DachPlaceRepository : PlaceRepository {
             try {
                 DachPlaceDao
                     .find {
-                        Places.id inList allPlaceIds.map { EntityID(it,
-                            Places
-                        ) }
+                        DachPlaces.id inList allPlaceIds.map {
+                            EntityID(
+                                it,
+                                Places
+                            )
+                        }
                     }
                     .map { it.id.value to it.toModel() }
                     .toMap()

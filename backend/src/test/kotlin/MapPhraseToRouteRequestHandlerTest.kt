@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import service.RouteService
+import util.Region
 import java.net.HttpURLConnection
 
 @ExtendWith(MockKExtension::class)
@@ -34,19 +35,31 @@ internal class MapPhraseToRouteRequestHandlerTest {
 
     @BeforeEach
     fun setUp() {
-        every { routeService.mapPhraseToRoute(validPhrase) } returns listOf(
-            Place(1,"place 1", 1.0, 2.0),
-            Place(2,"place 2", 1.0, 2.0),
-            Place(3,"place 3", 1.0, 2.0)
+        every { routeService.mapPhraseToRoute(validPhrase, false, Region.US) } returns listOf(
+            Place(1, "place 1", 1.0, 2.0),
+            Place(2, "place 2", 1.0, 2.0),
+            Place(3, "place 3", 1.0, 2.0)
         )
 
-        every { routeService.mapPhraseToRoute(emptyResultPhrase) } throws NotFoundException(emptyResultPhrase)
+        every {
+            routeService.mapPhraseToRoute(emptyResultPhrase, false, Region.US)
+        } throws NotFoundException(emptyResultPhrase)
 
-        every { routeService.mapPhraseToRoute(badRequestPhrase) } throws BadRequestException(badRequestPhrase)
+        every {
+            routeService.mapPhraseToRoute(badRequestPhrase, false, Region.US)
+        } throws BadRequestException(badRequestPhrase)
 
-        every { routeService.mapPhraseToRoute(notFoundPhrase) } throws NotFoundException(notFoundPhrase)
+        every { routeService.mapPhraseToRoute(notFoundPhrase, false, Region.US) } throws NotFoundException(
+            notFoundPhrase
+        )
 
-        every { routeService.mapPhraseToRoute(internalErrorPhrase) } throws IndexOutOfBoundsException()
+        every {
+            routeService.mapPhraseToRoute(internalErrorPhrase, false, Region.US)
+        } throws IndexOutOfBoundsException()
+
+        every {
+            apiGatewayProxyRequestEvent.queryStringParameters?.getOrDefault("region", null)
+        } returns null
     }
 
     @Test

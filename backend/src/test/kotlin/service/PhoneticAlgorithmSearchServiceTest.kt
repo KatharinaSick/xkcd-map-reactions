@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import persistence.UsPlaceRepository
+import util.Region
 
 @ExtendWith(MockKExtension::class)
 internal class PhoneticAlgorithmSearchServiceTest {
@@ -40,7 +41,7 @@ internal class PhoneticAlgorithmSearchServiceTest {
 
     @Test
     fun `mapPhraseToRoute() throws a BadRequestException when the list of words to map is empty`() {
-        assertThrows(BadRequestException::class.java) { phoneticAlgorithmSearchService.mapPhraseToRoute("") }
+        assertThrows(BadRequestException::class.java) { phoneticAlgorithmSearchService.mapPhraseToRoute("", Region.US) }
     }
 
     @Test
@@ -50,7 +51,7 @@ internal class PhoneticAlgorithmSearchServiceTest {
         every { placeRepository.findAllWhereNysiisCodeMatches(nysiisTestCode) } returns listOf()
         every { placeRepository.findAllWhereSoundexCodeMatches(soundexTestCode) } returns listOf()
 
-        assertThrows(NotFoundException::class.java) { phoneticAlgorithmSearchService.mapPhraseToRoute(testWord) }
+        assertThrows(NotFoundException::class.java) { phoneticAlgorithmSearchService.mapPhraseToRoute(testWord, Region.US) }
     }
 
     @Test
@@ -62,7 +63,7 @@ internal class PhoneticAlgorithmSearchServiceTest {
         every { placeRepository.findAllWhereNysiisCodeMatches(nysiisTestCode) } returns listOf(place1, place3)
         every { placeRepository.findAllWhereSoundexCodeMatches(soundexTestCode) } returns listOf(place4)
 
-        assertEquals(phoneticAlgorithmSearchService.mapPhraseToRoute(testWord), listOf(place1))
+        assertEquals(phoneticAlgorithmSearchService.mapPhraseToRoute(testWord, Region.US), listOf(place1))
     }
 
     @Test
@@ -73,10 +74,10 @@ internal class PhoneticAlgorithmSearchServiceTest {
         }
         every { placeRepository.findAllWhereNysiisCodeMatches(nysiisTestCode) } returns listOf(place1, place3)
         every { placeRepository.findAllWhereSoundexCodeMatches(soundexTestCode) } returns listOf(place4)
-        assertEquals(phoneticAlgorithmSearchService.mapPhraseToRoute(testWord), listOf(place3))
+        assertEquals(phoneticAlgorithmSearchService.mapPhraseToRoute(testWord, Region.US), listOf(place3))
 
         every { placeRepository.findAllWhereNysiisCodeMatches(nysiisTestCode) } returns listOf(place1, place2, place3)
-        assertTrue(listOf(place2, place3).containsAll(phoneticAlgorithmSearchService.mapPhraseToRoute(testWord)!!))
+        assertTrue(listOf(place2, place3).containsAll(phoneticAlgorithmSearchService.mapPhraseToRoute(testWord, Region.US)!!))
     }
 
     @Test
@@ -88,7 +89,7 @@ internal class PhoneticAlgorithmSearchServiceTest {
         }
         every { placeRepository.findAllWhereNysiisCodeMatches(nysiisTestCode) } returns listOf()
         every { placeRepository.findAllWhereSoundexCodeMatches(soundexTestCode) } returns listOf(place4)
-        var result = phoneticAlgorithmSearchService.mapPhraseToRoute(testWord)!!
+        var result = phoneticAlgorithmSearchService.mapPhraseToRoute(testWord, Region.US)!!
         assertTrue(listOf(place2, place3).containsAll(result))
         assertFalse(listOf(place1, place4).containsAll(result))
 
@@ -97,7 +98,7 @@ internal class PhoneticAlgorithmSearchServiceTest {
             every { placeRepository.findAllWhereBeiderMorseCodeMatches(it) } returns listOf()
         }
         every { placeRepository.findAllWhereNysiisCodeMatches(nysiisTestCode) } returns listOf(place1, place4)
-        result = phoneticAlgorithmSearchService.mapPhraseToRoute(testWord)!!
+        result = phoneticAlgorithmSearchService.mapPhraseToRoute(testWord, Region.US)!!
         assertTrue(listOf(place1, place4).containsAll(result))
         assertFalse(listOf(place2, place3).containsAll(result))
 
@@ -106,7 +107,7 @@ internal class PhoneticAlgorithmSearchServiceTest {
             every { placeRepository.findAllWhereBeiderMorseCodeMatches(it) } returns listOf(place2)
         }
         every { placeRepository.findAllWhereNysiisCodeMatches(nysiisTestCode) } returns listOf(place1)
-        result = phoneticAlgorithmSearchService.mapPhraseToRoute(testWord)!!
+        result = phoneticAlgorithmSearchService.mapPhraseToRoute(testWord, Region.US)!!
         assertTrue(listOf(place1, place2).containsAll(result))
         assertFalse(listOf(place3, place4).containsAll(result))
     }
@@ -119,7 +120,7 @@ internal class PhoneticAlgorithmSearchServiceTest {
         }
         every { placeRepository.findAllWhereNysiisCodeMatches(nysiisTestCode) } returns listOf()
         every { placeRepository.findAllWhereSoundexCodeMatches(soundexTestCode) } returns listOf(place3, place4)
-        val result = phoneticAlgorithmSearchService.mapPhraseToRoute(testWord)!!
+        val result = phoneticAlgorithmSearchService.mapPhraseToRoute(testWord, Region.US)!!
         assertTrue(listOf(place3, place4).containsAll(result))
         assertFalse(listOf(place1, place2).containsAll(result))
     }
