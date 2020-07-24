@@ -1,4 +1,4 @@
-package persistence.dao
+package persistence.dao.us
 
 import model.Place
 import org.jetbrains.exposed.dao.LongEntity
@@ -19,7 +19,7 @@ class PlaceDao(id: EntityID<Long>) : LongEntity(id) {
     var latitude by Places.latitude
     var longitude by Places.longitude
 
-    fun toModel() : Place {
-        return Place(name, latitude, longitude)
+    fun toModel(): Place {
+        return Place(id.value, name, latitude, longitude)
     }
 }
