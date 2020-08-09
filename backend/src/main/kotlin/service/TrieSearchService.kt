@@ -4,9 +4,10 @@ import exception.HttpException
 import model.Place
 import persistence.DachPlaceRepository
 import persistence.UsPlaceRepository
+import util.PhraseSearch
 import util.Region
 import util.trie.Trie
-import util.trie.TrieSearch
+import util.trie.TrieMatcher
 import java.io.BufferedInputStream
 import java.util.zip.GZIPInputStream
 
@@ -24,7 +25,7 @@ class TrieSearchService {
             Region.DACH -> Pair(dachTrie, dachPlaceRepository)
         }
 
-        val results = TrieSearch(trie, search).search()
+        val results = PhraseSearch(TrieMatcher(search, trie)).search()
         if (results.isEmpty()) {
             return null
         }
