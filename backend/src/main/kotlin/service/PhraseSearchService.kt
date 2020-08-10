@@ -4,13 +4,16 @@ import exception.HttpException
 import model.Place
 import persistence.DachPlaceRepository
 import persistence.UsPlaceRepository
+import util.MatcherType
+import util.PhoneticMatcher
+import util.PhraseSearch
 import util.Region
 import util.trie.Trie
-import util.trie.TrieSearch
+import util.trie.TrieMatcher
 import java.io.BufferedInputStream
 import java.util.zip.GZIPInputStream
 
-class TrieSearchService {
+class PhraseSearchService {
     private val usTrie = loadTrie("/US.trie")
     private val dachTrie = loadTrie("/DACH.trie")
 
@@ -18,13 +21,17 @@ class TrieSearchService {
     private val dachPlaceRepository = DachPlaceRepository()
 
     @Throws(HttpException::class)
-    fun mapPhraseToRoute(search: String, region: Region): List<Place>? {
+    fun mapPhraseToRoute(search: String, region: Region, matcherType: MatcherType): List<Place>? {
         val (trie, placeRepository) = when (region) {
             Region.US -> Pair(usTrie, usPlaceRepository)
             Region.DACH -> Pair(dachTrie, dachPlaceRepository)
         }
+        val matcher = when (matcherType) {
+            MatcherType.TRIE -> TrieMatcher(search, trie)
+            MatcherType.PHONETIC -> PhoneticMatcher(search, placeRepository)
+        }
 
-        val results = TrieSearch(trie, search).search()
+        val results = PhraseSearch(matcher).search()
         if (results.isEmpty()) {
             return null
         }

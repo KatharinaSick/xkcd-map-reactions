@@ -2,25 +2,14 @@ package persistence
 
 import model.Place
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.dao.with
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.StdOutSqlLogger
+import org.jetbrains.exposed.sql.addLogger
 import org.jetbrains.exposed.sql.lowerCase
 import org.jetbrains.exposed.sql.transactions.transaction
-import persistence.dao.dach.BeiderMorseEncodedDachPlaceDao
-import persistence.dao.dach.BeiderMorseEncodedDachPlaces
-import persistence.dao.dach.DachPlaceDao
-import persistence.dao.dach.DachPlaces
-import persistence.dao.dach.NysiisEncodedDachPlaceDao
-import persistence.dao.dach.NysiisEncodedDachPlaces
-import persistence.dao.dach.SoundexEncodedDachPlaceDao
-import persistence.dao.dach.SoundexEncodedDachPlaces
-import persistence.dao.us.BeiderMorseEncodedPlaceDao
-import persistence.dao.us.BeiderMorseEncodedPlaces
-import persistence.dao.us.NysiisEncodedPlaceDao
-import persistence.dao.us.NysiisEncodedPlaces
-import persistence.dao.us.PlaceDao
+import persistence.dao.dach.*
 import persistence.dao.us.Places
-import persistence.dao.us.SoundexEncodedPlaceDao
-import persistence.dao.us.SoundexEncodedPlaces
 
 class DachPlaceRepository : PlaceRepository {
 
@@ -47,14 +36,16 @@ class DachPlaceRepository : PlaceRepository {
         return transaction {
             NysiisEncodedDachPlaceDao
                 .find { NysiisEncodedDachPlaces.code eq nysiisCode }
+                .with(NysiisEncodedDachPlaceDao::place)
                 .map { it.place.toModel() }
         }
     }
 
-    override fun findAllWhereBeiderMorseCodeMatches(beiderMorseCode: String): List<Place> {
+    override fun findAllWhereBeiderMorseCodeMatches(beiderMorseCodes: List<String>): List<Place> {
         return transaction {
             BeiderMorseEncodedDachPlaceDao
-                .find { BeiderMorseEncodedDachPlaces.code eq beiderMorseCode }
+                .find { BeiderMorseEncodedDachPlaces.code inList beiderMorseCodes }
+                .with(BeiderMorseEncodedDachPlaceDao::place)
                 .map { it.place.toModel() }
         }
     }
@@ -64,6 +55,7 @@ class DachPlaceRepository : PlaceRepository {
             try {
                 SoundexEncodedDachPlaceDao
                     .find { SoundexEncodedDachPlaces.code eq soundexCode }
+                    .with(SoundexEncodedDachPlaceDao::place)
                     .map { it.place.toModel() }
             } catch (e: IllegalArgumentException) {
                 ArrayList()

@@ -1,15 +1,15 @@
 package service
 
-import com.amazonaws.services.lambda.runtime.LambdaLogger
 import exception.BadRequestException
 import exception.HttpException
 import exception.NotFoundException
 import model.Place
+import util.MatcherType
 import util.Region
 
 class RouteService {
 
-    private val trieSearchService = TrieSearchService()
+    private val trieSearchService = PhraseSearchService()
     private val phoneticAlgorithmSearchService = PhoneticAlgorithmSearchService()
 
     /**
@@ -27,13 +27,13 @@ class RouteService {
         var route = if (phoneticFirst) {
             phoneticAlgorithmSearchService.mapPhraseToRoute(phrase, region)
         } else {
-            trieSearchService.mapPhraseToRoute(phrase, region)
+            trieSearchService.mapPhraseToRoute(phrase, region, MatcherType.TRIE)
         }
 
 
         if (route == null || route.isEmpty()) {
             route = if (phoneticFirst) {
-                trieSearchService.mapPhraseToRoute(phrase, region)
+                trieSearchService.mapPhraseToRoute(phrase, region, MatcherType.TRIE)
             } else {
                 phoneticAlgorithmSearchService.mapPhraseToRoute(phrase, region)
             }

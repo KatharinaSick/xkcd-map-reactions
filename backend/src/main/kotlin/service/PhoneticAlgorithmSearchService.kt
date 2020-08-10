@@ -11,6 +11,7 @@ import org.apache.commons.text.similarity.LevenshteinDistance
 import persistence.DachPlaceRepository
 import persistence.PlaceRepository
 import persistence.UsPlaceRepository
+import util.PhoneticMatcherUtils.getPhoneticMatchesForWord
 import util.Region
 import kotlin.streams.asSequence
 
@@ -19,9 +20,6 @@ class PhoneticAlgorithmSearchService {
     private val usPlaceRepository = UsPlaceRepository()
     private val dachPlaceRepository = DachPlaceRepository()
 
-    private val beiderMorseEncoder = BeiderMorseEncoder()
-    private val nysiisEncoder = Nysiis()
-    private val soundexEnocder = Soundex()
     private val levenshteinDistance = LevenshteinDistance()
 
     /**
@@ -38,60 +36,35 @@ class PhoneticAlgorithmSearchService {
             throw BadRequestException("Phrase must not be empty")
         }
 
-        val placeRepository = when (region) {
-            Region.US -> usPlaceRepository
-            Region.DACH -> dachPlaceRepository
-        }
-
         val route = ArrayList<Place>()
         wordsToMap.forEach { word ->
-            val exactMatches = placeRepository.findAllWhereNameMatchesIgnoreCase(word)
-
-            if (exactMatches.isNotEmpty()) {
-                // there is a place that's named exactly like the word -> use it!
-                // TODO take the match that fits best into the route!
-                route.add(exactMatches[0])
-                return@forEach
-            }
-
-            val matches = getPhoneticMatchesForWord(placeRepository, word)
-            if (matches.isEmpty()) {
-                throw NotFoundException("No phonetic match found for \"$word\"")
-            }
+            val matches = mapWord(region, word)
             // TODO take the match that fits best into the route!
-            route.add(findBestMatch(word, matches)[0])
+            route.add(matches[0])
         }
         return route
     }
 
-    /**
-     * Retrieves all places from the database that sound similar to the passed word. To calculate these matches it uses
-     * the Beider-Morse and Nysiis as primary Phonetic Matchin Algorithms. If none of them delivers a result, Soundex
-     * is used as fallback.
-     *
-     * @param word the word to find similar sounding places for.
-     * @return a list of places that match to the passed word.
-     */
-    private fun getPhoneticMatchesForWord(placeRepository: PlaceRepository, word: String): List<Place> {
-        // Nysiis
-        val nysiisMatches = placeRepository.findAllWhereNysiisCodeMatches(nysiisEncoder.encode(word))
+    private fun mapWord(region: Region, word: String): List<Place> {
+        val placeRepository = getRepository(region)
+        val exactMatches = placeRepository.findAllWhereNameMatchesIgnoreCase(word)
 
-        // Beider Morse
-        val beiderMorseCodes = beiderMorseEncoder.encode(word).split("\\|")
-        val beiderMorseMatches = ArrayList<Place>()
-        beiderMorseCodes.forEach { beiderMorseMatches.addAll(placeRepository.findAllWhereBeiderMorseCodeMatches(it)) }
-
-        // Soundex as fallback if both result sets are empty (should barely never happen but to make sure...)
-        if (beiderMorseMatches.isEmpty() && nysiisMatches.isEmpty()) {
-            return placeRepository.findAllWhereSoundexCodeMatches(soundexEnocder.encode(word))
-        }
-
-        // Combine result sets
-        val matchedPlaces = nysiisMatches.intersect(beiderMorseMatches).toList()
-        return if (matchedPlaces.isNotEmpty()) {
-            matchedPlaces
+        return if (exactMatches.isNotEmpty()) {
+            // there is a place that's named exactly like the word -> use it!
+            exactMatches
         } else {
-            nysiisMatches.union(beiderMorseMatches).toList()
+            val matches = getPhoneticMatchesForWord(placeRepository, word)
+            if (matches.isEmpty()) {
+                throw NotFoundException("No phonetic match found for \"$word\"")
+            }
+            findBestMatch(word, matches)
+        }
+    }
+
+    private fun getRepository(region: Region): PlaceRepository {
+        return when (region) {
+            Region.US -> usPlaceRepository
+            Region.DACH -> dachPlaceRepository
         }
     }
 
@@ -110,7 +83,7 @@ class PhoneticAlgorithmSearchService {
         matches.forEach { match ->
             // Normalized Levenshtein distance can also be used to compare words of different length
             // TODO didn't think this through yet - maybe also another measure than the levenshtein distance could be good!
-            val distance = levenshteinDistance.apply(word, match.name).toDouble() / word.length.toDouble()
+            val distance = levenshteinDistance.apply(word.toLowerCase(), match.name.toLowerCase()).toDouble() / word.length.toDouble()
             bestDistance.let { best ->
                 if (best == null || distance < best) {
                     bestMatches.clear()

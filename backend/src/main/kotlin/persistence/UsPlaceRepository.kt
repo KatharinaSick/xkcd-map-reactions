@@ -2,17 +2,11 @@ package persistence
 
 import model.Place
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.dao.with
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.lowerCase
 import org.jetbrains.exposed.sql.transactions.transaction
-import persistence.dao.us.BeiderMorseEncodedPlaceDao
-import persistence.dao.us.BeiderMorseEncodedPlaces
-import persistence.dao.us.NysiisEncodedPlaceDao
-import persistence.dao.us.NysiisEncodedPlaces
-import persistence.dao.us.PlaceDao
-import persistence.dao.us.Places
-import persistence.dao.us.SoundexEncodedPlaceDao
-import persistence.dao.us.SoundexEncodedPlaces
+import persistence.dao.us.*
 
 class UsPlaceRepository : PlaceRepository {
 
@@ -39,14 +33,16 @@ class UsPlaceRepository : PlaceRepository {
         return transaction {
             NysiisEncodedPlaceDao
                 .find { NysiisEncodedPlaces.code eq nysiisCode }
+                .with(NysiisEncodedPlaceDao::place)
                 .map { it.place.toModel() }
         }
     }
 
-    override fun findAllWhereBeiderMorseCodeMatches(beiderMorseCode: String): List<Place> {
+    override fun findAllWhereBeiderMorseCodeMatches(beiderMorseCodes: List<String>): List<Place> {
         return transaction {
             BeiderMorseEncodedPlaceDao
-                .find { BeiderMorseEncodedPlaces.code eq beiderMorseCode }
+                .find { BeiderMorseEncodedPlaces.code inList beiderMorseCodes }
+                .with(BeiderMorseEncodedPlaceDao::place)
                 .map { it.place.toModel() }
         }
     }
@@ -56,6 +52,7 @@ class UsPlaceRepository : PlaceRepository {
             try {
                 SoundexEncodedPlaceDao
                     .find { SoundexEncodedPlaces.code eq soundexCode }
+                    .with(SoundexEncodedPlaceDao::place)
                     .map { it.place.toModel() }
             } catch (e: IllegalArgumentException) {
                 ArrayList()

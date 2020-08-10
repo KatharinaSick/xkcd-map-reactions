@@ -1,12 +1,15 @@
 package util.trie
 
 import org.apache.commons.text.similarity.LevenshteinDistance
+import util.Match
+import util.Matcher
 
-class TrieSearch(
-    private val trie: Trie, search: String,
-    private val splitWords: Boolean = false,
-    private val maxResultSize: Int = 100
-) {
+class TrieMatcher(
+    search: String,
+    private val trie: Trie,
+    private val splitWords: Boolean = false
+) : Matcher {
+
     companion object {
         val LEVENSHTEIN_DISTANCE = LevenshteinDistance()
         val FUZZY_GROUPS = listOf(
@@ -41,125 +44,45 @@ class TrieSearch(
     private val wordBeginnings = mutableSetOf<Int>()
     private val word = prepare(search)
 
-    private val cache = mutableMapOf<Int, TrieCacheEntry>()
-    private val depthsToCompute = mutableSetOf<Int>()
     private val currentTriePath = StringBuilder()
+    private var startDepth = 0
 
-    fun search(): List<List<Int>> {
-        cache[0] = TrieCacheEntry(mutableListOf(Pair(0, TrieResultNode(-1, null))))
-        searchDepth(0)
-        while (depthsToCompute.isNotEmpty()) {
-            val depth = depthsToCompute.min()!!
-            depthsToCompute.remove(depth)
-
-            cleanupDepth(depth)
-            if (depth == word.length) {
-                return makeToResultList(cache[depth]!!.results)
-            } else {
-                searchDepth(depth)
-            }
-        }
-        return emptyList()
+    override fun match(depth: Int): Set<Match> {
+        startDepth = depth
+        val results = mutableSetOf<Match>()
+        recursiveSearch(depth, trie.getRoot(), results)
+        return results
     }
 
-    private fun makeToResultList(resultChains: MutableList<Pair<Int, TrieResultNode>>): List<List<Int>> {
-        return resultChains.map {
-            val result = mutableListOf<Int>()
-            var currentNode: TrieResultNode? = it.second
-            while (currentNode != null && currentNode.wordId != -1) {
-                result.add(currentNode.wordId)
-                currentNode = currentNode.prefix
-            }
-            result.reversed()
-        }
-    }
-
-    private fun cleanupDepth(depth: Int) {
-        // all our matches. toList() is important since the index of a match is the same for #matches, #matchPrefixIndexes and #prefixes
-        val matches = cache[depth]!!.matches.toList()
-        // matchPrefixIndexes is which match of the prefix should be used next (this relies on the matches of the prefix being sorted)
-        val matchPrefixIndexes = Array(matches.size) { 0 }
-        val prefixes =
-            Array(matches.size) { i -> cache[matches[i].startDepth]!!.results }
-
-        val matchDistances =
-            Array(matches.size) { i ->
-                val phraseMatched = word
-                    .substring(
-                        matches[i].startDepth, matches[i].endDepth
-                    )
-                LEVENSHTEIN_DISTANCE.apply(phraseMatched, matches[i].matchedWordInTrie)
-            }
-
-        val results = cache[depth]!!.results
-        while (results.size < maxResultSize) {
-            var minI = -1
-            var min: Int? = null
-            for (i in matches.indices) {
-                if (matchPrefixIndexes[i] >= prefixes[i].size) {
-                    continue
-                } else {
-                    val distance = matchDistances[i] + prefixes[i][matchPrefixIndexes[i]].first
-                    if (min == null || distance < min) {
-                        min = distance
-                        minI = i
-                    }
-                }
-            }
-            if (min == null) {
-                break
-            } else {
-                results.add(
-                    Pair(min, TrieResultNode(matches[minI].wordId, prefixes[minI][matchPrefixIndexes[minI]].second))
-                )
-                matchPrefixIndexes[minI] = matchPrefixIndexes[minI] + 1
-            }
-        }
-
-        matches.map { it.startDepth }.toSet()
-            .forEach {
-                val cacheEntry = cache[it]!!
-                cacheEntry.isNeededFrom.remove(depth)
-                if (cacheEntry.isNeededFrom.isEmpty()) {
-                    cache.remove(it)
-                }
-            }
-    }
-
-    private fun searchDepth(depth: Int) {
-        val results = mutableSetOf<TrieMatch>()
-        recursiveSearch(depth, depth, trie.getRoot(), results)
-
-        val cacheGroups = results.groupBy { it.endDepth }
-        cacheGroups.forEach {
-            val suffix = it.key
-
-            if (!cache.containsKey(suffix)) {
-                depthsToCompute.add(suffix)
-                cache[suffix] = TrieCacheEntry()
-            }
-
-            cache[suffix]!!.matches.addAll(it.value)
-            cache[depth]!!.isNeededFrom.add(suffix)
-        }
-    }
-
-    private fun recursiveSearch(startDepth: Int, depth: Int, node: TrieNode, results: MutableSet<TrieMatch>) {
+    private fun recursiveSearch(depth: Int, node: TrieNode, results: MutableSet<Match>) {
         if (depth >= word.length) {
-            if (node.isWord()) {
-                results.add(TrieMatch(node.getWord(), startDepth, depth, currentTriePath.toString()))
+            if (depth == word.length && node.isWord()) {
+                results.add(matched(node, depth, true))
             }
             return
         }
         if (isAcceptableWordSplit(depth) && node.isWord()) {
-            results.add(TrieMatch(node.getWord(), startDepth, depth, currentTriePath.toString()))
+            results.add(matched(node, depth, false))
         }
         val nextNodes = collectNextNodes(depth, node)
         for (nextNode in nextNodes) {
             currentTriePath.append(nextNode.third)
-            recursiveSearch(startDepth, nextNode.first, nextNode.second, results)
+            recursiveSearch(nextNode.first, nextNode.second, results)
             currentTriePath.setLength(currentTriePath.length - nextNode.third.length)
         }
+    }
+
+    private fun matched(node: TrieNode, endDepth: Int, end: Boolean): Match {
+        return Match(
+            node.getWord(),
+            endDepth,
+            score(currentTriePath.toString(), word.substring(startDepth, endDepth)),
+            end
+        )
+    }
+
+    private fun score(matchedWord: String, matchedPhrase: String): Int {
+        return LEVENSHTEIN_DISTANCE.apply(matchedWord, matchedPhrase)
     }
 
     private fun isAcceptableWordSplit(depth: Int): Boolean {
