@@ -4,6 +4,7 @@ import exception.HttpException
 import model.Place
 import persistence.DachPlaceRepository
 import persistence.UsPlaceRepository
+import util.MatcherType
 import util.PhoneticMatcher
 import util.PhraseSearch
 import util.Region
@@ -20,14 +21,17 @@ class PhraseSearchService {
     private val dachPlaceRepository = DachPlaceRepository()
 
     @Throws(HttpException::class)
-    fun mapPhraseToRoute(search: String, region: Region): List<Place>? {
+    fun mapPhraseToRoute(search: String, region: Region, matcherType: MatcherType): List<Place>? {
         val (trie, placeRepository) = when (region) {
             Region.US -> Pair(usTrie, usPlaceRepository)
             Region.DACH -> Pair(dachTrie, dachPlaceRepository)
         }
+        val matcher = when (matcherType) {
+            MatcherType.TRIE -> TrieMatcher(search, trie)
+            MatcherType.PHONETIC -> PhoneticMatcher(search, placeRepository)
+        }
 
-//        val results = PhraseSearch(TrieMatcher(search, trie)).search()
-        val results = PhraseSearch(PhoneticMatcher(search, placeRepository)).search()
+        val results = PhraseSearch(matcher).search()
         if (results.isEmpty()) {
             return null
         }
