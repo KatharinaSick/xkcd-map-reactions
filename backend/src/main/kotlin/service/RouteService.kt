@@ -1,6 +1,5 @@
 package service
 
-import com.amazonaws.services.lambda.runtime.LambdaLogger
 import exception.BadRequestException
 import exception.HttpException
 import exception.NotFoundException
@@ -9,7 +8,7 @@ import util.Region
 
 class RouteService {
 
-    private val trieSearchService = TrieSearchService()
+    private val trieSearchService = PhraseSearchService()
     private val phoneticAlgorithmSearchService = PhoneticAlgorithmSearchService()
 
     /**

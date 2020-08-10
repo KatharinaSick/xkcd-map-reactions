@@ -18,7 +18,7 @@ interface PlaceRepository {
 
     fun findAllWhereNameMatchesIgnoreCase(name: String): List<Place>
     fun findAllWhereNysiisCodeMatches(nysiisCode: String): List<Place>
-    fun findAllWhereBeiderMorseCodeMatches(beiderMorseCode: String): List<Place>
+    fun findAllWhereBeiderMorseCodeMatches(beiderMorseCodes: List<String>): List<Place>
     fun findAllWhereSoundexCodeMatches(soundexCode: String): List<Place>
     fun findAllForIds(allPlaceIds: Set<Long>): Map<Long, Place>
     fun findAll(): List<Place>
