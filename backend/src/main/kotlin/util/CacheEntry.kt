@@ -19,21 +19,17 @@ data class CacheMatch(
      */
     val wordId: Int,
     /**
-     * TODO
+     * Where this match starts
      */
     val startDepth: Int,
     /**
-     * TODO
+     * Where this match ends
      */
     val endDepth: Int,
     /**
      * score of match (lower = better)
      */
-    val score: Int,
-    /**
-     * if this is allowed to be the end of a result
-     */
-    val validEnd: Boolean
+    val score: Int
 )
 
 data class Match(
@@ -48,9 +44,5 @@ data class Match(
     /**
      * score of match (lower = better)
      */
-    val score: Int,
-    /**
-     * if this is allowed to be the end of a result
-     */
-    val validEnd: Boolean
+    val score: Int
 )

@@ -15,9 +15,9 @@ class PhoneticMatcher(
 
     private val words = search.split("\\s+".toRegex())
 
-    override fun match(depth: Int): Set<Match> {
+    override fun match(depth: Int): Pair<Boolean, Set<Match>> {
         if (depth == words.size) {
-            throw IllegalArgumentException("depth is too damn high!")
+            return Pair(true, emptySet())
         }
         var wordCount = 1
         val results = mutableSetOf<Match>()
@@ -27,17 +27,17 @@ class PhoneticMatcher(
                 word += " " + words[depth + i]
             }
             results.addAll(getPhoneticMatchesForWord(placeRepository, word)
+                //TODO do we really want to do that?
                 .distinctBy { it.name }
                 .map {
                     Match(
                         it.id.toInt(),
                         depth + wordCount,
-                        LEVENSHTEIN_DISTANCE.apply(word, it.name),
-                        depth + wordCount == words.size
+                        LEVENSHTEIN_DISTANCE.apply(word, it.name)
                     )
                 })
             wordCount++
         } while (depth + wordCount - 1 < words.size && (wordCount <= 2 || word.length < 20))
-        return results
+        return Pair(false, results)
     }
 }

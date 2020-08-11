@@ -46,38 +46,41 @@ class TrieMatcher(
 
     private val currentTriePath = StringBuilder()
     private var startDepth = 0
+    private val results = mutableSetOf<Match>()
 
-    override fun match(depth: Int): Set<Match> {
+    override fun match(depth: Int): Pair<Boolean, Set<Match>> {
+        if (depth == word.length) {
+            return Pair(true, emptySet())
+        }
         startDepth = depth
-        val results = mutableSetOf<Match>()
-        recursiveSearch(depth, trie.getRoot(), results)
-        return results
+        results.clear()
+        recursiveSearch(depth, trie.getRoot())
+        return Pair(false, results)
     }
 
-    private fun recursiveSearch(depth: Int, node: TrieNode, results: MutableSet<Match>) {
+    private fun recursiveSearch(depth: Int, node: TrieNode) {
         if (depth >= word.length) {
             if (depth == word.length && node.isWord()) {
-                results.add(matched(node, depth, true))
+                results.add(matched(node, depth))
             }
             return
         }
         if (isAcceptableWordSplit(depth) && node.isWord()) {
-            results.add(matched(node, depth, false))
+            results.add(matched(node, depth))
         }
         val nextNodes = collectNextNodes(depth, node)
         for (nextNode in nextNodes) {
             currentTriePath.append(nextNode.third)
-            recursiveSearch(nextNode.first, nextNode.second, results)
+            recursiveSearch(nextNode.first, nextNode.second)
             currentTriePath.setLength(currentTriePath.length - nextNode.third.length)
         }
     }
 
-    private fun matched(node: TrieNode, endDepth: Int, end: Boolean): Match {
+    private fun matched(node: TrieNode, endDepth: Int): Match {
         return Match(
             node.getWord(),
             endDepth,
-            score(currentTriePath.toString(), word.substring(startDepth, endDepth)),
-            end
+            score(currentTriePath.toString(), word.substring(startDepth, endDepth))
         )
     }
 
