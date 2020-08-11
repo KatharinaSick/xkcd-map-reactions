@@ -23,15 +23,6 @@ class DachPlaceRepository : PlaceRepository {
         )
     }
 
-    override fun findAllWhereNameMatchesIgnoreCase(name: String): List<Place> {
-        return transaction {
-            DachPlaceDao
-                .find { DachPlaces.name.lowerCase() eq name.toLowerCase() }
-                .map { it.toModel() }
-        }
-    }
-
-
     override fun findAllWhereNysiisCodeMatches(nysiisCode: String): List<Place> {
         return transaction {
             NysiisEncodedDachPlaceDao

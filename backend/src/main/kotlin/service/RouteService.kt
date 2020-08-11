@@ -9,8 +9,7 @@ import util.Region
 
 class RouteService {
 
-    private val trieSearchService = PhraseSearchService()
-    private val phoneticAlgorithmSearchService = PhoneticAlgorithmSearchService()
+    private val phraseSearchService = PhraseSearchService()
 
     /**
      * Maps the passed phrase to a route (a list of places) that sounds similar.
@@ -24,19 +23,15 @@ class RouteService {
             throw BadRequestException("Phrase must not be empty")
         }
 
-        var route = if (phoneticFirst) {
-            phoneticAlgorithmSearchService.mapPhraseToRoute(phrase, region)
+        val matcherTypes = if (phoneticFirst) {
+            Pair(MatcherType.PHONETIC, MatcherType.TRIE)
         } else {
-            trieSearchService.mapPhraseToRoute(phrase, region, MatcherType.TRIE)
+            Pair(MatcherType.TRIE, MatcherType.PHONETIC)
         }
 
-
+        var route = phraseSearchService.mapPhraseToRoute(phrase, region, matcherTypes.first)
         if (route == null || route.isEmpty()) {
-            route = if (phoneticFirst) {
-                trieSearchService.mapPhraseToRoute(phrase, region, MatcherType.TRIE)
-            } else {
-                phoneticAlgorithmSearchService.mapPhraseToRoute(phrase, region)
-            }
+            route = phraseSearchService.mapPhraseToRoute(phrase, region, matcherTypes.second)
         }
 
         if (route == null || route.isEmpty()) {
