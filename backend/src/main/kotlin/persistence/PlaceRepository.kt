@@ -15,8 +15,6 @@ import persistence.dao.us.SoundexEncodedPlaceDao
 import persistence.dao.us.SoundexEncodedPlaces
 
 interface PlaceRepository {
-
-    fun findAllWhereNameMatchesIgnoreCase(name: String): List<Place>
     fun findAllWhereNysiisCodeMatches(nysiisCode: String): List<Place>
     fun findAllWhereBeiderMorseCodeMatches(beiderMorseCodes: List<String>): List<Place>
     fun findAllWhereSoundexCodeMatches(soundexCode: String): List<Place>

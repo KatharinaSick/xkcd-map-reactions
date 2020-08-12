@@ -20,15 +20,6 @@ class UsPlaceRepository : PlaceRepository {
         )
     }
 
-    override fun findAllWhereNameMatchesIgnoreCase(name: String): List<Place> {
-        return transaction {
-            PlaceDao
-                .find { Places.name.lowerCase() eq name.toLowerCase() }
-                .map { it.toModel() }
-        }
-    }
-
-
     override fun findAllWhereNysiisCodeMatches(nysiisCode: String): List<Place> {
         return transaction {
             NysiisEncodedPlaceDao
