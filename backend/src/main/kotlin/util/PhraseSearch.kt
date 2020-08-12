@@ -22,10 +22,10 @@ class PhraseSearch(
             val depth = depthsToCompute.min()!!
             depthsToCompute.remove(depth)
 
-            if (calculateResultsForDepth(depth)) {
+            calculateResultsForDepth(depth)
+
+            if (searchDepth(depth)) {
                 return makeToResultList(cache[depth]!!.results)
-            } else {
-                searchDepth(depth)
             }
         }
         return emptyList()
@@ -43,8 +43,7 @@ class PhraseSearch(
         }
     }
 
-    private fun calculateResultsForDepth(depth: Int): Boolean {
-        var isEnd = false
+    private fun calculateResultsForDepth(depth: Int) {
         // all our matches. toList() is important since the index of a match is the same for #matches, #matchPrefixIndexes and #prefixes
         val matches = cache[depth]!!.cacheMatches.toList()
         // matchPrefixIndexes is which match of the prefix should be used next (this relies on the matches of the prefix being sorted)
@@ -76,7 +75,6 @@ class PhraseSearch(
                 break
             } else {
                 val minMatch = matches[minI]
-                isEnd = isEnd || minMatch.validEnd
                 results.add(
                     Pair(
                         min,
@@ -98,12 +96,13 @@ class PhraseSearch(
                     cache.remove(it)
                 }
             }
-
-        return isEnd
     }
 
-    private fun searchDepth(depth: Int) {
-        val results = matcher.match(depth)
+    private fun searchDepth(depth: Int): Boolean {
+        val (done, results) = matcher.match(depth)
+        if (done) {
+            return true
+        }
 
         val cacheGroups = results.groupBy { it.endDepth }
         cacheGroups.forEach {
@@ -119,12 +118,12 @@ class PhraseSearch(
                     match.wordId,
                     depth,
                     match.endDepth,
-                    match.score,
-                    match.validEnd
+                    match.score
                 )
             })
             cache[depth]!!.isNeededFrom.add(suffix)
         }
+        return false
     }
 }
 
