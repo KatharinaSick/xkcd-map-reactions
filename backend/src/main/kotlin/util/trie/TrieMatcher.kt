@@ -4,6 +4,10 @@ import org.apache.commons.text.similarity.LevenshteinDistance
 import util.Match
 import util.Matcher
 
+/**
+ * Matcher which uses a Trie to do it's phonetic matching.
+ * it does the fuzzy matching by substituting chars by looking them up in the FUZZY_GROUPS map
+ */
 class TrieMatcher(
     search: String,
     private val trie: Trie,

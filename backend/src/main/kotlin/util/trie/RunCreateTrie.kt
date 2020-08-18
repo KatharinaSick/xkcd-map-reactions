@@ -17,7 +17,7 @@ import kotlin.system.measureTimeMillis
  */
 fun main() {
     createAndSaveTrie("[US]", UsPlaceRepository(), "src/main/resources/US.trie")
-    createAndSaveTrie("[DACH]",DachPlaceRepository(), "src/main/resources/DACH.trie")
+    createAndSaveTrie("[DACH]", DachPlaceRepository(), "src/main/resources/DACH.trie")
 }
 
 fun createAndSaveTrie(logPrefix: String, placeRepository: PlaceRepository, fileOutputPath: String) {
@@ -45,8 +45,11 @@ fun saveTrie(trie: CreateTrie, outputPath: String) {
             )
         )
 
-    recursiveSaveTrie(out, 0.toChar(), trie.getRoot())
+    saveTrie(out, trie)
+}
 
+fun saveTrie(out: OutputStream, trie: CreateTrie) {
+    recursiveSaveTrie(out, 0.toChar(), trie.getRoot())
     out.flush()
     out.close()
 }
@@ -82,14 +85,19 @@ fun prepare(search: String): String {
 }
 
 fun createTrie(placeRepository: PlaceRepository): CreateTrie {
-    val trie = CreateTrie()
-    var i = 0
-    placeRepository
+    val allPlaces = placeRepository
         .findAll()
         .filter { it.name.isNotEmpty() }
         .map {
             it.id to prepare(it.name)
         }
+    return createTrie(allPlaces)
+}
+
+fun createTrie(allPlaces: Collection<Pair<Long, String>>): CreateTrie {
+    val trie = CreateTrie()
+    var i = 0
+    allPlaces
         .filter {
             it.second.isNotEmpty()
         }
@@ -135,7 +143,7 @@ class CreateTrie {
     }
 
     fun calculateOffsets() {
-        println(calculateOffsetsRecursive(0, root))
+        calculateOffsetsRecursive(0, root)
     }
 
     private fun calculateOffsetsRecursive(oldOffset: Int, node: TrieNodeCreate): Int {
