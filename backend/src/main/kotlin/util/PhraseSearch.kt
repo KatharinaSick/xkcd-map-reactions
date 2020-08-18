@@ -1,5 +1,11 @@
 package util
 
+/**
+ * Class which uses a Matcher to perform a search. It basically is a dynamic programming algorithm.
+ * It works based on the premise that no matter how you end up at a given point in the search-string, from here on out all the possible results are the same
+ * This allows us to split the search into small chunks (saved in the cache) where we start from the beginning (depth=0) and work our way up to all possible other depths we reach with our Matcher.
+ * As soon as the Matcher indicates we have a valid end this search returns the best n=maxResultSize solutions from this depth/cache
+ */
 class PhraseSearch(
     private val matcher: Matcher,
     private val maxResultSize: Int = 100

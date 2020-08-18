@@ -99,6 +99,20 @@ internal class PhoneticMatcherTest {
         )
     }
 
+    @Test
+    fun `test combine words`() {
+        test(
+            0, "split word",
+            listOf(
+                "splitword"
+            ),
+            false, setOf(
+                Match(0,1,4),
+                Match(0,2,1)
+            )
+        )
+    }
+
     private fun test(
         depth: Int,
         search: String,

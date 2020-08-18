@@ -2,6 +2,9 @@ package util.trie
 
 import java.nio.ByteBuffer
 
+/**
+ * trie implementation based on a custom binary file format
+ */
 class Trie(bytes: ByteArray) {
     private val buffer = ByteBuffer.wrap(bytes)
 
