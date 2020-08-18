@@ -13,7 +13,7 @@ class PhoneticMatcher(
         val LEVENSHTEIN_DISTANCE = LevenshteinDistance()
     }
 
-    private val words = search.split("\\s+".toRegex())
+    private val words = search.split("\\s+".toRegex()).filter { it.isNotEmpty() }
 
     override fun match(depth: Int): Pair<Boolean, Set<Match>> {
         if (depth == words.size) {
